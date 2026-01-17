@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Monitor - Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">📱</span>
+          <span class="logo-text">WA Monitor</span>
+        </div>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <a href="#/" class="nav-item active" data-page="dashboard">
+          <span class="nav-icon">📊</span>
+          <span>Dashboard</span>
+        </a>
+        <a href="#/phones" class="nav-item" data-page="phones">
+          <span class="nav-icon">📞</span>
+          <span>Phones</span>
+        </a>
+        <a href="#/logs" class="nav-item" data-page="logs">
+          <span class="nav-icon">📋</span>
+          <span>Sync Logs</span>
+        </a>
+        <a href="#/upload" class="nav-item" data-page="upload">
+          <span class="nav-icon">⬆️</span>
+          <span>Upload</span>
+        </a>
+        <a href="#/alerts" class="nav-item" data-page="alerts">
+          <span class="nav-icon">🔔</span>
+          <span>Alerts</span>
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="server-status">
+          <span class="status-dot online"></span>
+          <span>Server Online</span>
+        </div>
+      </div>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="header">
+        <h1 id="page-title">Dashboard</h1>
+        <div class="header-actions">
+          <button class="btn btn-icon" onclick="location.reload()">
+            🔄
+          </button>
+        </div>
+      </header>
+      
+      <div id="content" class="content">
+        <!-- Content loaded dynamically -->
+      </div>
+    </main>
+  </div>
+  
+  <!-- Templates -->
+  <template id="dashboard-template">
+    <div class="dashboard">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">📞</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-phones">--</div>
+            <div class="stat-label">Total Phones</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-active">--</div>
+            <div class="stat-label">Active Phones</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💬</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-messages">--</div>
+            <div class="stat-label">Total Messages</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📈</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-today">--</div>
+            <div class="stat-label">Today's Messages</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🎯</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-success">--%</div>
+            <div class="stat-label">Success Rate</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="section">
+        <h2>Recent Sync Activity</h2>
+        <div class="table-container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Phone</th>
+                <th>Employee</th>
+                <th>Status</th>
+                <th>Messages</th>
+                <th>Duration</th>
+              </tr>
+            </thead>
+            <tbody id="recent-logs">
+              <tr><td colspan="6" class="loading">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </template>
+  
+  <template id="phones-template">
+    <div class="phones-page">
+      <div class="page-header">
+        <div class="filters">
+          <select id="phone-filter" class="select">
+            <option value="all">All Phones</option>
+            <option value="synced">Synced</option>
+            <option value="stale">Stale (>24h)</option>
+            <option value="never">Never Synced</option>
+          </select>
+          <input type="text" id="phone-search" class="input" placeholder="Search phones...">
+        </div>
+      </div>
+      
+      <div class="table-container">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Phone Number</th>
+              <th>Employee</th>
+              <th>Department</th>
+              <th>Last Sync</th>
+              <th>Messages</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="phones-table">
+            <tr><td colspan="7" class="loading">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </template>
+  
+  <template id="logs-template">
+    <div class="logs-page">
+      <div class="page-header">
+        <div class="filters">
+          <select id="log-status-filter" class="select">
+            <option value="all">All Status</option>
+            <option value="success">Success</option>
+            <option value="failed">Failed</option>
+            <option value="processing">Processing</option>
+          </select>
+          <input type="date" id="log-date-filter" class="input">
+        </div>
+      </div>
+      
+      <div class="table-container">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Phone</th>
+              <th>File Size</th>
+              <th>Status</th>
+              <th>Duration</th>
+              <th>Messages</th>
+              <th>Chats</th>
+              <th>Error</th>
+            </tr>
+          </thead>
+          <tbody id="logs-table">
+            <tr><td colspan="8" class="loading">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </template>
+  
+  <template id="upload-template">
+    <div class="upload-page">
+      <div class="upload-card">
+        <h2>Upload WhatsApp Backup</h2>
+        <p class="upload-description">Upload a .crypt15 backup file to process and sync messages</p>
+        
+        <form id="upload-form" class="upload-form">
+          <div class="form-group">
+            <label for="phone-select">Select Phone</label>
+            <select id="phone-select" class="select" required>
+              <option value="">-- Select Phone --</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Backup File</label>
+            <div class="file-drop" id="file-drop">
+              <input type="file" id="file-input" accept=".crypt15,.crypt14" hidden>
+              <div class="file-drop-content">
+                <span class="file-icon">📁</span>
+                <p>Drag & drop your backup file here</p>
+                <p class="file-hint">or click to browse</p>
+                <p class="file-name" id="file-name"></p>
+              </div>
+            </div>
+          </div>
+          
+          <button type="submit" class="btn btn-primary btn-lg" id="upload-btn">
+            Upload & Process
+          </button>
+        </form>
+        
+        <div class="progress-section" id="progress-section" style="display: none;">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="progress-steps">
+            <div class="step" id="step-upload">⬆️ Uploading</div>
+            <div class="step" id="step-decrypt">🔓 Decrypting</div>
+            <div class="step" id="step-parse">📊 Parsing</div>
+            <div class="step" id="step-insert">💾 Saving</div>
+            <div class="step" id="step-done">✅ Done</div>
+          </div>
+        </div>
+        
+        <div class="result-section" id="result-section" style="display: none;">
+          <div class="result-card" id="result-card">
+            <!-- Result content inserted here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+  
+  <template id="alerts-template">
+    <div class="alerts-page">
+      <div class="alerts-grid">
+        <div class="alert-card warning" id="alert-stale">
+          <div class="alert-header">
+            <span class="alert-icon">⚠️</span>
+            <h3>Stale Phones (>24h)</h3>
+          </div>
+          <div class="alert-count" id="stale-count">--</div>
+          <div class="alert-list" id="stale-list"></div>
+        </div>
+        
+        <div class="alert-card danger" id="alert-week">
+          <div class="alert-header">
+            <span class="alert-icon">🚨</span>
+            <h3>Critical (>7 days)</h3>
+          </div>
+          <div class="alert-count" id="week-count">--</div>
+          <div class="alert-list" id="week-list"></div>
+        </div>
+        
+        <div class="alert-card error" id="alert-failed">
+          <div class="alert-header">
+            <span class="alert-icon">❌</span>
+            <h3>Failed Syncs (24h)</h3>
+          </div>
+          <div class="alert-count" id="failed-count">--</div>
+          <div class="alert-list" id="failed-list"></div>
+        </div>
+        
+        <div class="alert-card info" id="alert-never">
+          <div class="alert-header">
+            <span class="alert-icon">❓</span>
+            <h3>Never Synced</h3>
+          </div>
+          <div class="alert-count" id="never-count">--</div>
+          <div class="alert-list" id="never-list"></div>
+        </div>
+      </div>
+    </div>
+  </template>
+  
+  <script src="js/app.js"></script>
+</body>
+</html>

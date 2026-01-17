@@ -1,0 +1,9 @@
+node_modules/
+.env
+token.json
+*.db
+*.crypt14
+*.crypt15
+msgstore.db
+backup-*.zip
+.DS_Store
