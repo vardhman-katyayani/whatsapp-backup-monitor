@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd server && npm install",
+  "outputDirectory": "server",
+  "installCommand": "cd server && npm install",
+  "framework": null
+}
