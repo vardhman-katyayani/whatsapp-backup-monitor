@@ -1,7 +1,5 @@
 {
   "version": 2,
-  "buildCommand": "cd server && npm install",
-  "installCommand": "cd server && npm install",
   "builds": [
     {
       "src": "server/index.js",

@@ -1,23 +1,12 @@
 {
-  "name": "whatsapp-backup-decrypt-test",
+  "name": "whatsapp-backup-monitor",
   "version": "1.0.0",
-  "description": "Test script to decrypt WhatsApp backup from Google Drive",
-  "main": "test-decrypt.js",
-  "type": "module",
+  "description": "WhatsApp backup monitor - root package for Vercel deployment",
   "scripts": {
-    "test": "node test-decrypt.js"
+    "build": "cd server && npm install",
+    "install": "cd server && npm install"
   },
-  "dependencies": {
-    "googleapis": "^128.0.0",
-    "sql.js": "^1.10.3",
-    "dotenv": "^16.3.1",
-    "readline": "^1.0.0"
-  },
-  "keywords": [
-    "whatsapp",
-    "backup",
-    "decrypt"
-  ],
-  "author": "",
-  "license": "MIT"
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
