@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "description": "WhatsApp backup monitor - root package for Vercel deployment",
   "scripts": {
-    "build": "cd server && npm install",
-    "install": "cd server && npm install"
+    "postinstall": "cd server && npm install"
   },
   "engines": {
     "node": ">=18.0.0"
