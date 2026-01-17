@@ -1,6 +1,15 @@
 {
-  "buildCommand": "cd server && npm install",
-  "outputDirectory": "server",
-  "installCommand": "cd server && npm install",
-  "framework": null
+  "version": 2,
+  "builds": [
+    {
+      "src": "server/index.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "server/index.js"
+    }
+  ]
 }
