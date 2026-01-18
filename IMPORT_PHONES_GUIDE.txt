@@ -1,0 +1,119 @@
+================================================================================
+                    PHONE IMPORT QUICK GUIDE
+================================================================================
+
+HOW TO IMPORT 160 PHONES FROM EXCEL FILE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The import script supports Excel files (.xlsx, .xls) directly - no conversion needed!
+
+STEP 1: Prepare Your Excel File
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Your Excel file should have these columns (column names are flexible):
+
+  REQUIRED COLUMNS:
+    • phone_number (or: phone, mobile, whatsapp_number, number)
+    • employee_name (or: name, agent_name, employee)
+
+  OPTIONAL COLUMNS:
+    • encryption_key (or: key, backup_key, whatsapp_key, 64_digit_key)
+    • employee_id (or: id, emp_id)
+    • department (or: dept) - Default: "Sales"
+    • is_active (or: active) - Default: true
+    • google_account (or: gmail)
+    • notes (or: remarks)
+
+  Example Excel Structure:
+    ┌──────────────┬──────────────┬────────────────────────────────────────────┐
+    │ phone_number │ employee_name │ encryption_key                            │
+    ├──────────────┼──────────────┼────────────────────────────────────────────┤
+    │ +919876543210│ John Doe     │ 706ded8a9699c258dd3d441dacf1e98c4ca86358...│
+    │ +919876543211│ Jane Smith   │ abc123def456...                            │
+    └──────────────┴──────────────┴────────────────────────────────────────────┘
+
+STEP 2: Run Import Script
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  From the project root directory:
+
+  node server/scripts/import-phones.js "Backup_Whatsaap_Encrypted_Key_Form (Responses).xlsx"
+
+  Or if the file is in a different location:
+
+  node server/scripts/import-phones.js "C:\path\to\your\file.xlsx"
+
+STEP 3: Verify Import
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  After import:
+  1. Start the server: cd server && npm start
+  2. Open admin dashboard: http://localhost:3000/admin
+  3. Check "Phones" section - you should see all imported phones
+
+IMPORT FEATURES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✅ Supports Excel (.xlsx, .xls) and CSV files
+  ✅ Automatic column name detection (case-insensitive)
+  ✅ Phone number normalization (adds country code if missing)
+  ✅ Batch processing (handles large files efficiently)
+  ✅ Duplicate handling (updates existing phones)
+  ✅ Detailed import summary with success/failure counts
+  ✅ Error reporting for invalid rows
+
+IMPORTANT NOTES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  • Phone numbers will be normalized automatically
+    - If missing country code, +91 will be added (India)
+    - Leading zeros will be removed
+    - Format: +91XXXXXXXXXX
+
+  • Encryption keys must be 64-character hex strings
+    - If a phone doesn't have a key, it can be added later
+    - Keys are required for backup decryption
+
+  • The script will show a sample of the first record before importing
+    - Review this to ensure column mapping is correct
+
+  • If import fails, check the error messages
+    - Common issues: missing required columns, invalid phone numbers
+
+TROUBLESHOOTING:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Issue: "Missing phone_number"
+  → Check that your Excel file has a column with phone numbers
+  → Column can be named: phone_number, phone, mobile, whatsapp_number, etc.
+
+  Issue: "Missing employee_name"
+  → Check that your Excel file has a column with employee names
+  → Column can be named: employee_name, name, agent_name, etc.
+
+  Issue: "Supabase credentials not configured"
+  → Make sure you have a .env file in the server directory with:
+     SUPABASE_URL=https://qxsauwrxaamcerrvznhp.supabase.co
+     SUPABASE_SERVICE_KEY=your_service_key_here
+
+  Issue: "Import fails with database error"
+  → Check Supabase connection
+  → Verify database tables exist (phones table)
+  → Check Supabase service key is correct
+
+EXAMPLE COMMANDS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  # Import from Excel (current directory)
+  node server/scripts/import-phones.js "Backup_Whatsaap_Encrypted_Key_Form (Responses).xlsx"
+
+  # Import from Excel (full path)
+  node server/scripts/import-phones.js "C:\Users\Vardhman\Desktop\phones.xlsx"
+
+  # Import from CSV
+  node server/scripts/import-phones.js "phones.csv"
+
+  # Check script help
+  node server/scripts/import-phones.js
+
+================================================================================
