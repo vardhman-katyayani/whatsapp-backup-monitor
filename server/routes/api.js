@@ -47,9 +47,17 @@ router.post('/upload-backup', upload.single('file'), async (req, res) => {
     if (phone_id) {
       const result = await getPhoneById(phone_id);
       phone = result.data;
+      if (result.error) {
+        console.error('getPhoneById error:', result.error);
+      }
     } else {
+      console.log('Looking up phone by number:', phone_number);
       const result = await getPhoneByNumber(phone_number);
       phone = result.data;
+      if (result.error) {
+        console.error('getPhoneByNumber error:', result.error);
+      }
+      console.log('Phone lookup result:', phone ? 'found' : 'not found', phone ? phone.employee_name : '');
     }
     
     if (!phone) {

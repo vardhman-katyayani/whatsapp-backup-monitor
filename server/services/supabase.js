@@ -23,7 +23,6 @@ export async function getPhones() {
   if (!supabase) return { data: [], error: 'Supabase not configured' };
   
   const { data, error } = await supabase
-    .schema('whatsapp')
     .from('phones')
     .select('*')
     .order('employee_name');
@@ -35,7 +34,6 @@ export async function getPhoneById(phoneId) {
   if (!supabase) return { data: null, error: 'Supabase not configured' };
   
   const { data, error } = await supabase
-    .schema('whatsapp')
     .from('phones')
     .select('*')
     .eq('id', phoneId)
@@ -48,7 +46,6 @@ export async function getPhoneByNumber(phoneNumber) {
   if (!supabase) return { data: null, error: 'Supabase not configured' };
   
   const { data, error } = await supabase
-    .schema('whatsapp')
     .from('phones')
     .select('*')
     .eq('phone_number', phoneNumber)
@@ -61,7 +58,6 @@ export async function updatePhoneLastSync(phoneId, messagesAdded, chatsAdded) {
   if (!supabase) return { error: 'Supabase not configured' };
   
   const { error } = await supabase
-    .schema('whatsapp')
     .from('phones')
     .update({
       last_sync_at: new Date().toISOString(),
@@ -81,7 +77,6 @@ export async function upsertChat(phoneId, chatData) {
   if (!supabase) return { data: null, error: 'Supabase not configured' };
   
   const { data, error } = await supabase
-    .schema('whatsapp')
     .from('chats')
     .upsert({
       phone_id: phoneId,
@@ -107,7 +102,6 @@ export async function getChatsForPhone(phoneId) {
   if (!supabase) return { data: [], error: 'Supabase not configured' };
   
   const { data, error } = await supabase
-    .schema('whatsapp')
     .from('chats')
     .select('*')
     .eq('phone_id', phoneId)
@@ -130,7 +124,6 @@ export async function insertMessages(messages) {
   for (let i = 0; i < messages.length; i += batchSize) {
     const batch = messages.slice(i, i + batchSize);
     const { error } = await supabase
-      .schema('whatsapp')
       .from('messages')
       .insert(batch);
     
@@ -149,7 +142,6 @@ export async function getMessagesForChat(chatId, limit = 100, offset = 0) {
   if (!supabase) return { data: [], error: 'Supabase not configured' };
   
   const { data, error } = await supabase
-    .schema('whatsapp')
     .from('messages')
     .select('*')
     .eq('chat_id', chatId)
@@ -166,7 +158,6 @@ export async function createPipelineLog(phoneId, filename, fileSize) {
   if (!supabase) return { data: { id: 'mock-log-id' }, error: null };
   
   const { data, error } = await supabase
-    .schema('whatsapp')
     .from('pipeline_logs')
     .insert({
       phone_id: phoneId,
@@ -185,7 +176,6 @@ export async function updatePipelineLog(logId, updates) {
   if (!supabase) return { error: null };
   
   const { error } = await supabase
-    .schema('whatsapp')
     .from('pipeline_logs')
     .update({
       ...updates,
@@ -202,7 +192,6 @@ export async function getPipelineLogs(limit = 50, phoneId = null) {
   if (!supabase) return { data: [], error: 'Supabase not configured' };
   
   let query = supabase
-    .schema('whatsapp')
     .from('pipeline_logs')
     .select('*, phones(phone_number, employee_name)')
     .order('started_at', { ascending: false })
@@ -237,19 +226,16 @@ export async function getDashboardStats() {
   try {
     // Get phone counts
     const { count: totalPhones } = await supabase
-      .schema('whatsapp')
       .from('phones')
       .select('*', { count: 'exact', head: true });
     
     const { count: activePhones } = await supabase
-      .schema('whatsapp')
       .from('phones')
       .select('*', { count: 'exact', head: true })
       .eq('is_active', true);
     
     // Get message count
     const { count: totalMessages } = await supabase
-      .schema('whatsapp')
       .from('messages')
       .select('*', { count: 'exact', head: true });
     
@@ -257,14 +243,12 @@ export async function getDashboardStats() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const { count: messagesToday } = await supabase
-      .schema('whatsapp')
       .from('messages')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', today.toISOString());
     
     // Get recent pipeline logs
     const { data: recentLogs } = await supabase
-      .schema('whatsapp')
       .from('pipeline_logs')
       .select('*, phones(phone_number, employee_name)')
       .order('started_at', { ascending: false })
@@ -272,13 +256,11 @@ export async function getDashboardStats() {
     
     // Calculate success rate
     const { count: successCount } = await supabase
-      .schema('whatsapp')
       .from('pipeline_logs')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'success');
     
     const { count: totalLogs } = await supabase
-      .schema('whatsapp')
       .from('pipeline_logs')
       .select('*', { count: 'exact', head: true });
     
