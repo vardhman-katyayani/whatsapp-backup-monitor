@@ -1,11 +1,18 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { createDecipheriv, createHmac } from 'crypto';
 import { inflateSync } from 'zlib';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 console.log('🔓 WhatsApp Crypt15 Decryptor - Final Attempt\n');
 
-// The 64-digit hex key from screenshot
-const hexKey = '706ded8a9699c258dd3d441dacf1e98c4ca86358d5f3f21a8b766ec0bbbe6385';
+// The 64-digit hex key from .env
+const hexKey = process.env.WHATSAPP_HEX_KEY;
+if (!hexKey) {
+  console.error('❌ Error: WHATSAPP_HEX_KEY not set in .env');
+  process.exit(1);
+}
 const rootKey = Buffer.from(hexKey, 'hex');
 
 console.log(`Root key: ${rootKey.toString('hex')}`);

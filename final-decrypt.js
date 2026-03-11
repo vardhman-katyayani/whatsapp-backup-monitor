@@ -1,11 +1,24 @@
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { createDecipheriv, createHmac, createHash } from 'crypto';
 import { inflateSync } from 'zlib';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const filePath = 'msgstore.db.crypt15';
-const password = 'test@123';
+if (!existsSync(filePath)) {
+  console.error(` Error: Backup file not found: ${filePath}`);
+  console.error('Please place your msgstore.db.crypt15 file in this directory.');
+  process.exit(1);
+}
 
-console.log('🔥 WhatsApp Crypt15 Decryptor (wa-crypt-tools algorithm)\n');
+const password = process.env.WHATSAPP_BACKUP_PASSWORD;
+if (!password) {
+  console.error(' Error: WHATSAPP_BACKUP_PASSWORD not set in .env');
+  process.exit(1);
+}
+
+console.log(' WhatsApp Crypt15 Decryptor (wa-crypt-tools algorithm)\n');
 
 const data = readFileSync(filePath);
 console.log(`File: ${filePath}`);
@@ -174,13 +187,13 @@ function parseHeader(data) {
 // ============================================
 // Main decryption logic
 // ============================================
-console.log('📋 Parsing header...\n');
+console.log(' Parsing header...\n');
 
 const header = parseHeader(data);
 console.log(`\nHeader size: ${header.headerSize} bytes`);
 
 if (!header.iv) {
-  console.log('❌ Could not find IV in header!');
+  console.log(' Could not find IV in header!');
   process.exit(1);
 }
 
@@ -204,7 +217,7 @@ console.log(`Checksum: ${checksum.toString('hex')}`);
 // BUT - let's try if the backup might be using local key derivation
 // ============================================
 
-console.log('\n🔓 Attempting decryption...\n');
+console.log('\n Attempting decryption...\n');
 
 // If we have server salt, try to derive key from password
 const saltsToTry = [];
@@ -235,7 +248,7 @@ function tryDecryptWithKey(key, iv, encData, authTagBytes, label) {
       try {
         const decompressed = inflateSync(result);
         if (decompressed.slice(0, 15).toString('ascii') === 'SQLite format 3') {
-          console.log(`✅ SUCCESS with ${label} (zlib compressed)!`);
+          console.log(` SUCCESS with ${label} (zlib compressed)!`);
           return decompressed;
         }
       } catch (e) {
@@ -245,7 +258,7 @@ function tryDecryptWithKey(key, iv, encData, authTagBytes, label) {
     
     // Check for raw SQLite
     if (result.slice(0, 15).toString('ascii') === 'SQLite format 3') {
-      console.log(`✅ SUCCESS with ${label}!`);
+      console.log(`SUCCESS with ${label}!`);
       return result;
     }
   } catch (e) {
@@ -335,8 +348,8 @@ for (let headerOffset = 60; headerOffset <= 200; headerOffset++) {
   }
 }
 
-console.log('\n❌ All decryption attempts failed.');
-console.log('\n📋 Analysis:');
+console.log('\n All decryption attempts failed.');
+console.log('\n Analysis:');
 console.log('For password-based E2E encrypted backups, WhatsApp stores the actual');
 console.log('encryption key on their HSM servers, protected by your password.');
 console.log('The password is used to RETRIEVE the key from servers, not to derive it locally.');

@@ -17,7 +17,7 @@
           <span class="logo-text">WA Monitor</span>
         </div>
       </div>
-      
+
       <nav class="sidebar-nav">
         <a href="#/" class="nav-item active" data-page="dashboard">
           <span class="nav-icon">📊</span>
@@ -26,6 +26,14 @@
         <a href="#/phones" class="nav-item" data-page="phones">
           <span class="nav-icon">📞</span>
           <span>Phones</span>
+        </a>
+        <a href="#/messages" class="nav-item" data-page="messages">
+          <span class="nav-icon">💬</span>
+          <span>Messages</span>
+        </a>
+        <a href="#/ai" class="nav-item" data-page="ai">
+          <span class="nav-icon">🤖</span>
+          <span>AI Insights</span>
         </a>
         <a href="#/logs" class="nav-item" data-page="logs">
           <span class="nav-icon">📋</span>
@@ -39,8 +47,12 @@
           <span class="nav-icon">🔔</span>
           <span>Alerts</span>
         </a>
+        <a href="#/chat" class="nav-item" data-page="chat">
+          <span class="nav-icon">💡</span>
+          <span>Ask AI</span>
+        </a>
       </nav>
-      
+
       <div class="sidebar-footer">
         <div class="server-status">
           <span class="status-dot online"></span>
@@ -48,25 +60,25 @@
         </div>
       </div>
     </aside>
-    
+
     <!-- Main Content -->
     <main class="main-content">
       <header class="header">
         <h1 id="page-title">Dashboard</h1>
         <div class="header-actions">
-          <button class="btn btn-icon" onclick="location.reload()">
-            🔄
-          </button>
+          <button class="btn btn-icon" onclick="location.reload()">🔄</button>
         </div>
       </header>
-      
+
       <div id="content" class="content">
         <!-- Content loaded dynamically -->
       </div>
     </main>
   </div>
-  
-  <!-- Templates -->
+
+  <!-- ==================== TEMPLATES ==================== -->
+
+  <!-- Dashboard -->
   <template id="dashboard-template">
     <div class="dashboard">
       <div class="stats-grid">
@@ -106,7 +118,7 @@
           </div>
         </div>
       </div>
-      
+
       <div class="section">
         <h2>Recent Sync Activity</h2>
         <div class="table-container">
@@ -129,7 +141,8 @@
       </div>
     </div>
   </template>
-  
+
+  <!-- Phones -->
   <template id="phones-template">
     <div class="phones-page">
       <div class="page-header">
@@ -137,13 +150,13 @@
           <select id="phone-filter" class="select">
             <option value="all">All Phones</option>
             <option value="synced">Synced</option>
-            <option value="stale">Stale (>24h)</option>
+            <option value="stale">Stale (&gt;24h)</option>
             <option value="never">Never Synced</option>
           </select>
           <input type="text" id="phone-search" class="input" placeholder="Search phones...">
         </div>
       </div>
-      
+
       <div class="table-container">
         <table class="table">
           <thead>
@@ -153,18 +166,78 @@
               <th>Department</th>
               <th>Last Sync</th>
               <th>Messages</th>
+              <th>Drive</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody id="phones-table">
-            <tr><td colspan="7" class="loading">Loading...</td></tr>
+            <tr><td colspan="8" class="loading">Loading...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
   </template>
-  
+
+  <!-- Messages Viewer -->
+  <template id="messages-template">
+    <div class="messages-page">
+      <div class="messages-layout">
+        <!-- Left: Chats list -->
+        <div class="chats-panel">
+          <div class="panel-header">
+            <select id="msg-phone-select" class="select">
+              <option value="">-- Select Phone --</option>
+            </select>
+          </div>
+          <div id="chats-list" class="chats-list">
+            <div class="chat-empty">Select a phone to view chats</div>
+          </div>
+        </div>
+
+        <!-- Right: Message thread -->
+        <div class="thread-panel">
+          <div class="thread-header" id="thread-header">
+            <div class="thread-title">Select a chat</div>
+          </div>
+          <div id="message-thread" class="message-thread">
+            <div class="thread-empty">Select a chat to view messages</div>
+          </div>
+          <div class="thread-load-more" id="thread-load-more" style="display:none">
+            <button class="btn btn-secondary" onclick="loadMoreMessages()">Load more messages</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- AI Insights -->
+  <template id="ai-template">
+    <div class="ai-page">
+      <div class="page-header">
+        <div class="filters">
+          <select id="ai-phone-select" class="select">
+            <option value="">-- All Phones --</option>
+          </select>
+          <select id="ai-filter" class="select">
+            <option value="all">All Insights</option>
+            <option value="flagged">🚨 Flagged Only</option>
+            <option value="negative">😠 Negative</option>
+            <option value="positive">😊 Positive</option>
+          </select>
+          <button class="btn btn-primary" id="analyze-btn" onclick="triggerAnalysis()">🤖 Run AI Analysis</button>
+        </div>
+      </div>
+
+      <div id="ai-status" class="ai-status" style="display:none"></div>
+
+      <div id="ai-insights-grid" class="ai-insights-grid">
+        <div class="loading-state">Select a phone and run analysis</div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Sync Logs -->
   <template id="logs-template">
     <div class="logs-page">
       <div class="page-header">
@@ -178,7 +251,7 @@
           <input type="date" id="log-date-filter" class="input">
         </div>
       </div>
-      
+
       <div class="table-container">
         <table class="table">
           <thead>
@@ -200,13 +273,14 @@
       </div>
     </div>
   </template>
-  
+
+  <!-- Upload -->
   <template id="upload-template">
     <div class="upload-page">
       <div class="upload-card">
         <h2>Upload WhatsApp Backup</h2>
         <p class="upload-description">Upload a .crypt15 backup file to process and sync messages</p>
-        
+
         <form id="upload-form" class="upload-form">
           <div class="form-group">
             <label for="phone-select">Select Phone</label>
@@ -214,25 +288,25 @@
               <option value="">-- Select Phone --</option>
             </select>
           </div>
-          
+
           <div class="form-group">
             <label>Backup File</label>
             <div class="file-drop" id="file-drop">
               <input type="file" id="file-input" accept=".crypt15,.crypt14" hidden>
               <div class="file-drop-content">
                 <span class="file-icon">📁</span>
-                <p>Drag & drop your backup file here</p>
+                <p>Drag &amp; drop your backup file here</p>
                 <p class="file-hint">or click to browse</p>
                 <p class="file-name" id="file-name"></p>
               </div>
             </div>
           </div>
-          
+
           <button type="submit" class="btn btn-primary btn-lg" id="upload-btn">
-            Upload & Process
+            Upload &amp; Process
           </button>
         </form>
-        
+
         <div class="progress-section" id="progress-section" style="display: none;">
           <div class="progress-bar">
             <div class="progress-fill" id="progress-fill"></div>
@@ -245,38 +319,37 @@
             <div class="step" id="step-done">✅ Done</div>
           </div>
         </div>
-        
+
         <div class="result-section" id="result-section" style="display: none;">
-          <div class="result-card" id="result-card">
-            <!-- Result content inserted here -->
-          </div>
+          <div class="result-card" id="result-card"></div>
         </div>
       </div>
     </div>
   </template>
-  
+
+  <!-- Alerts -->
   <template id="alerts-template">
     <div class="alerts-page">
       <div class="alerts-grid">
-        <div class="alert-card warning" id="alert-stale">
+        <div class="alert-card warning">
           <div class="alert-header">
             <span class="alert-icon">⚠️</span>
-            <h3>Stale Phones (>24h)</h3>
+            <h3>Stale Phones (&gt;24h)</h3>
           </div>
           <div class="alert-count" id="stale-count">--</div>
           <div class="alert-list" id="stale-list"></div>
         </div>
-        
-        <div class="alert-card danger" id="alert-week">
+
+        <div class="alert-card danger">
           <div class="alert-header">
             <span class="alert-icon">🚨</span>
-            <h3>Critical (>7 days)</h3>
+            <h3>Critical (&gt;7 days)</h3>
           </div>
           <div class="alert-count" id="week-count">--</div>
           <div class="alert-list" id="week-list"></div>
         </div>
-        
-        <div class="alert-card error" id="alert-failed">
+
+        <div class="alert-card error">
           <div class="alert-header">
             <span class="alert-icon">❌</span>
             <h3>Failed Syncs (24h)</h3>
@@ -284,8 +357,8 @@
           <div class="alert-count" id="failed-count">--</div>
           <div class="alert-list" id="failed-list"></div>
         </div>
-        
-        <div class="alert-card info" id="alert-never">
+
+        <div class="alert-card info">
           <div class="alert-header">
             <span class="alert-icon">❓</span>
             <h3>Never Synced</h3>
@@ -296,7 +369,32 @@
       </div>
     </div>
   </template>
-  
+
+  <!-- Ask AI Chat -->
+  <template id="chat-template">
+    <div class="chat-page">
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-welcome">
+          <div class="chat-welcome-icon">💡</div>
+          <div class="chat-welcome-title">Ask anything about your data</div>
+          <div class="chat-welcome-sub">Try: "Which agents haven't synced in 3 days?" or "Show me all red flags"</div>
+          <div class="chat-suggestions">
+            <button class="suggestion-btn" onclick="askSuggestion(this)">Which agents have red flags?</button>
+            <button class="suggestion-btn" onclick="askSuggestion(this)">Who hasn't synced in 7 days?</button>
+            <button class="suggestion-btn" onclick="askSuggestion(this)">What are the most common topics?</button>
+            <button class="suggestion-btn" onclick="askSuggestion(this)">How many messages total?</button>
+            <button class="suggestion-btn" onclick="askSuggestion(this)">Which agents have Drive connected?</button>
+            <button class="suggestion-btn" onclick="askSuggestion(this)">Show negative sentiment chats</button>
+          </div>
+        </div>
+      </div>
+      <div class="chat-input-bar">
+        <textarea id="chat-input" class="chat-input" placeholder="Ask anything about your agents, messages, or insights..." rows="1"></textarea>
+        <button class="chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()">Send</button>
+      </div>
+    </div>
+  </template>
+
   <script src="js/app.js"></script>
 </body>
 </html>

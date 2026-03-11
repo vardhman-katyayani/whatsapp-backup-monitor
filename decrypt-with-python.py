@@ -7,11 +7,18 @@ Run this after installing: pip install wa-crypt-tools
 import sys
 import subprocess
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def main():
     backup_file = "msgstore.db.crypt15"
-    password = "test@123"
+    password = os.getenv('WHATSAPP_BACKUP_PASSWORD')
+    if not password:
+        print("❌\ Error: WHATSAPP_BACKUP_PASSWORD not set in .env")
+        return 1
     output_file = "msgstore.db"
+    
     
     if not os.path.exists(backup_file):
         print(f"Error: {backup_file} not found!")

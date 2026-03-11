@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Backup - Agent Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/portal.css">
+</head>
+<body>
+
+  <!-- LOGIN PAGE -->
+  <div id="login-page" class="page">
+    <div class="login-container">
+      <div class="login-card">
+        <div class="login-logo">
+          <span class="logo-icon">📱</span>
+          <h1>WA Backup Portal</h1>
+          <p>Sales Agent Login</p>
+        </div>
+
+        <div id="login-error" class="error-msg" style="display:none"></div>
+
+        <div class="form-group">
+          <label class="field-label">Email Address</label>
+          <input type="email" id="login-email" class="input-field" placeholder="you@company.com" autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label class="field-label">Password</label>
+          <input type="password" id="login-password" class="input-field" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+
+        <button class="btn btn-primary btn-block" id="login-btn" onclick="loginWithEmail()">Sign In</button>
+
+        <p class="login-note" style="margin-top:16px">
+          Don't have a password yet? Contact your admin to set up your account.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD PAGE -->
+  <div id="dashboard-page" class="page" style="display:none">
+    <header class="portal-header">
+      <div class="header-left">
+        <span class="logo-icon">📱</span>
+        <span class="header-title">WA Backup Portal</span>
+      </div>
+      <div class="header-right">
+        <img id="agent-avatar" class="agent-avatar" src="" alt="" style="display:none">
+        <span id="agent-name" class="agent-name"></span>
+        <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+      </div>
+    </header>
+
+    <main class="portal-main">
+
+      <!-- Status Cards -->
+      <div class="status-grid">
+        <div class="status-card">
+          <div class="status-icon">📞</div>
+          <div class="status-info">
+            <div class="status-label">Your Number</div>
+            <div class="status-value" id="d-phone">--</div>
+          </div>
+        </div>
+        <div class="status-card">
+          <div class="status-icon">🏢</div>
+          <div class="status-info">
+            <div class="status-label">Department</div>
+            <div class="status-value" id="d-dept">--</div>
+          </div>
+        </div>
+        <div class="status-card">
+          <div class="status-icon">💬</div>
+          <div class="status-info">
+            <div class="status-label">Messages Synced</div>
+            <div class="status-value" id="d-messages">--</div>
+          </div>
+        </div>
+        <div class="status-card">
+          <div class="status-icon">🕐</div>
+          <div class="status-info">
+            <div class="status-label">Last Sync</div>
+            <div class="status-value" id="d-last-sync">--</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Google Drive Connection -->
+      <div class="section-card">
+        <div class="section-header">
+          <h2>Google Drive Backup</h2>
+          <span class="badge" id="drive-badge">Checking...</span>
+        </div>
+
+        <div id="drive-connected-view" style="display:none">
+          <div class="connected-banner">
+            <span>✅</span>
+            <div>
+              <div style="font-weight:600;margin-bottom:4px">Drive Connected</div>
+              <div style="font-size:13px;color:#86efac">Your WhatsApp backup syncs automatically every night at 3:00 AM</div>
+            </div>
+          </div>
+          <p class="info-text" style="margin-top:16px">Make sure WhatsApp is set to back up daily on your phone:<br>
+            <em>WhatsApp → Settings → Chats → Chat Backup → Back up to Google Drive → Daily</em>
+          </p>
+          <button class="btn btn-danger btn-sm" style="margin-top:12px" onclick="disconnectDrive()">Disconnect Drive</button>
+        </div>
+
+        <div id="drive-disconnected-view">
+          <div class="steps">
+            <div class="step-item">
+              <span class="step-num">1</span>
+              <span>On your phone: WhatsApp → Settings → Chats → Chat Backup → Google Drive → set to <strong>Daily</strong></span>
+            </div>
+            <div class="step-item">
+              <span class="step-num">2</span>
+              <span>Click "Connect Google Drive" below and allow backup access</span>
+            </div>
+            <div class="step-item">
+              <span class="step-num">3</span>
+              <span>Done — backups sync automatically every night</span>
+            </div>
+          </div>
+          <button class="btn btn-primary" id="connect-drive-btn" onclick="connectDrive()">
+            ☁️ Connect Google Drive
+          </button>
+        </div>
+      </div>
+
+      <!-- Recent Sync History -->
+      <div class="section-card">
+        <div class="section-header">
+          <h2>Sync History</h2>
+          <span class="hint-text">Last 5 syncs</span>
+        </div>
+        <div id="sync-history">
+          <div class="loading-text">Loading...</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/portal.js"></script>
+</body>
+</html>

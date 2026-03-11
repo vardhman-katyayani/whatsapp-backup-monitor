@@ -2,10 +2,18 @@
   "name": "whatsapp-backup-monitor",
   "version": "1.0.0",
   "description": "WhatsApp backup monitor - root package for Vercel deployment",
+  "type": "module",
+  "main": "server/index.js",
   "scripts": {
+    "dev": "cd server && npm run dev",
+    "start": "cd server && npm start",
     "postinstall": "cd server && npm install"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.99.0",
+    "dotenv": "^17.3.1"
   }
 }

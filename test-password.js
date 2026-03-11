@@ -1,5 +1,8 @@
 import { readFileSync } from 'fs';
 import { pbkdf2Sync, createDecipheriv } from 'crypto';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const filePath = 'msgstore-2026-01-16.1.db.crypt15';
 const encryptedData = readFileSync(filePath);
@@ -9,14 +12,14 @@ const iv = encryptedData.slice(16, 32);
 const keyMaterial = encryptedData.slice(32, 64);
 const encryptedContent = encryptedData.slice(73);
 
-// Test different password variations
+// Test different password variations from .env and default
 const passwords = [
-  'Vardhman@121',
-  'vardhman@121',
-  'Vardhman@121 ',
-  ' Vardhman@121',
-  'Vardhman@121\n',
-];
+  process.env.WHATSAPP_BACKUP_PASSWORD,
+  process.env.WHATSAPP_BACKUP_PASSWORD && process.env.WHATSAPP_BACKUP_PASSWORD.toLowerCase(),
+  process.env.WHATSAPP_BACKUP_PASSWORD && process.env.WHATSAPP_BACKUP_PASSWORD + ' ',
+  process.env.WHATSAPP_BACKUP_PASSWORD && ' ' + process.env.WHATSAPP_BACKUP_PASSWORD,
+  process.env.WHATSAPP_BACKUP_PASSWORD && process.env.WHATSAPP_BACKUP_PASSWORD + '\n',
+].filter(Boolean);
 
 console.log('Testing password variations...\n');
 

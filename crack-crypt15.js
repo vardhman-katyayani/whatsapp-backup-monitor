@@ -1,9 +1,16 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { pbkdf2Sync, createDecipheriv, createHash, hkdfSync } from 'crypto';
 import { inflateSync, gunzipSync } from 'zlib';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const filePath = 'msgstore.db.crypt15';
-const password = 'test@123';
+const password = process.env.WHATSAPP_BACKUP_PASSWORD;
+if (!password) {
+  console.error('❌ Error: WHATSAPP_BACKUP_PASSWORD not set in .env');
+  process.exit(1);
+}
 
 console.log('🔥 WhatsApp Crypt15 Password Cracker\n');
 

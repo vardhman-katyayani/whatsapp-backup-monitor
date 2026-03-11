@@ -2,13 +2,13 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { createDecipheriv, createHmac, createHash } from 'crypto';
 import { inflateSync } from 'zlib';
 
-console.log('🔑 WhatsApp Crypt15 Decryptor (Key File Method)\n');
+console.log(' WhatsApp Crypt15 Decryptor (Key File Method)\n');
 
 const backupPath = 'msgstore.db.crypt15';
 const keyPath = 'encrypted_backup.key';
 
 if (!existsSync(keyPath)) {
-  console.log(`❌ Key file not found: ${keyPath}`);
+  console.log(` Key file not found: ${keyPath}`);
   console.log('\nTo get the key file:');
   console.log('1. Connect your phone via USB with USB debugging enabled');
   console.log('2. Run: adb backup -f whatsapp.ab -noapk com.whatsapp');

@@ -7,7 +7,7 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  console.warn('⚠️  Supabase credentials not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY');
+  console.warn(' Supabase credentials not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY');
 }
 
 export const supabase = supabaseUrl && supabaseKey 
@@ -116,25 +116,36 @@ export async function getChatsForPhone(phoneId) {
 export async function insertMessages(messages) {
   if (!supabase) return { error: 'Supabase not configured' };
   if (!messages || messages.length === 0) return { error: null };
-  
-  // Insert in batches of 1000
-  const batchSize = 1000;
+
+  // Deduplicate in JS — fetch existing wa_message_ids for this phone
+  // so we never hit a DB constraint error (no schema change needed)
+  const phoneId = messages[0].phone_id;
+  const { data: existing } = await supabase
+    .from('messages')
+    .select('wa_message_id')
+    .eq('phone_id', phoneId);
+
+  const existingIds = new Set((existing || []).map(m => m.wa_message_id));
+  const newMessages = messages.filter(m => !existingIds.has(m.wa_message_id));
+
+  if (newMessages.length === 0) return { error: null, inserted: 0 };
+
+  // Insert in batches of 500
+  const batchSize = 500;
   let totalInserted = 0;
-  
-  for (let i = 0; i < messages.length; i += batchSize) {
-    const batch = messages.slice(i, i + batchSize);
-    const { error } = await supabase
-      .from('messages')
-      .insert(batch);
-    
+
+  for (let i = 0; i < newMessages.length; i += batchSize) {
+    const batch = newMessages.slice(i, i + batchSize);
+    const { error } = await supabase.from('messages').insert(batch);
+
     if (error) {
       console.error(`Batch insert error at ${i}:`, error);
       return { error, inserted: totalInserted };
     }
-    
+
     totalInserted += batch.length;
   }
-  
+
   return { error: null, inserted: totalInserted };
 }
 
@@ -280,6 +291,115 @@ export async function getDashboardStats() {
   } catch (error) {
     return { data: null, error: error.message };
   }
+}
+
+// ============================================
+// Messages Operations
+// ============================================
+export async function getMessagesForChatPaged(chatId, limit = 50, offset = 0) {
+  if (!supabase) return { data: [], error: 'Supabase not configured' };
+
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('chat_id', chatId)
+    .order('timestamp', { ascending: true })
+    .range(offset, offset + limit - 1);
+
+  return { data, error };
+}
+
+export async function getChatsForPhonePaged(phoneId, limit = 50, offset = 0) {
+  if (!supabase) return { data: [], error: 'Supabase not configured' };
+
+  const { data, error } = await supabase
+    .from('chats')
+    .select('*')
+    .eq('phone_id', phoneId)
+    .order('last_message_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  return { data, error };
+}
+
+// ============================================
+// AI Insights Operations
+// ============================================
+export async function getAIInsights(phoneId, chatId = null) {
+  if (!supabase) return { data: [], error: 'Supabase not configured' };
+
+  let query = supabase
+    .from('ai_insights')
+    .select('*, chats(contact_name, group_name, is_group, jid)')
+    .eq('phone_id', phoneId)
+    .order('analyzed_at', { ascending: false });
+
+  if (chatId) query = query.eq('chat_id', chatId);
+
+  const { data, error } = await query.limit(50);
+  return { data, error };
+}
+
+export async function saveAIInsight(insight) {
+  if (!supabase) return { error: 'Supabase not configured' };
+
+  const { data, error } = await supabase
+    .from('ai_insights')
+    .upsert(insight, { onConflict: 'chat_id' })
+    .select()
+    .single();
+
+  return { data, error };
+}
+
+export async function getFlaggedInsights(limit = 50) {
+  if (!supabase) return { data: [], error: 'Supabase not configured' };
+
+  const { data, error } = await supabase
+    .from('ai_insights')
+    .select('*, chats(contact_name, group_name, jid), phones(phone_number, employee_name)')
+    .not('red_flags', 'eq', '{}')
+    .order('analyzed_at', { ascending: false })
+    .limit(limit);
+
+  return { data, error };
+}
+
+// ============================================
+// Google OAuth Token Operations
+// ============================================
+export async function updatePhoneTokens(phoneId, tokens) {
+  if (!supabase) return { error: 'Supabase not configured' };
+
+  const { error } = await supabase
+    .from('phones')
+    .update({
+      google_refresh_token: tokens.refresh_token,
+      google_access_token: tokens.access_token,
+      google_token_expiry: tokens.expiry_date
+        ? new Date(tokens.expiry_date).toISOString()
+        : null,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', phoneId);
+
+  return { error };
+}
+
+export async function clearPhoneTokens(phoneId) {
+  if (!supabase) return { error: 'Supabase not configured' };
+
+  const { error } = await supabase
+    .from('phones')
+    .update({
+      google_refresh_token: null,
+      google_access_token: null,
+      google_token_expiry: null,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', phoneId);
+
+  return { error };
 }
 
 export default supabase;
