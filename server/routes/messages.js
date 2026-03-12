@@ -10,8 +10,8 @@ import {
 } from '../services/supabase.js';
 import { getAuthUrl, exchangeCodeForTokens } from '../services/drive.js';
 import { analyzePhoneChats } from '../services/ai.js';
-import { syncPhone } from '../cron/index.js';
-import supabase from '../services/supabase.js';
+import { syncDriveBackups } from '../cron/drive-sync.js';
+import { supabase } from '../services/supabase.js';
 
 const router = Router();
 
@@ -134,8 +134,9 @@ router.post('/sync/:phone_id', async (req, res) => {
 
     res.json({ message: 'Sync started', phone_id });
 
-    syncPhone(phone)
-      .then(ok => console.log(`[Manual Sync] ${phone.phone_number}: ${ok ? 'success' : 'failed'}`))
+    // Run full Drive sync (skips already-processed files automatically)
+    syncDriveBackups()
+      .then(stats => console.log(`[Manual Sync] ${phone.phone_number}: ✅${stats.success} ❌${stats.failed} ⏭${stats.skipped}`))
       .catch(e => console.error(`[Manual Sync] Error:`, e.message));
 
   } catch (e) {
