@@ -277,4 +277,14 @@ router.post('/test-decrypt', upload.single('file'), async (req, res) => {
   }
 });
 
+// ============================================
+// Public config — exposes Supabase URL + anon key for browser realtime
+// ============================================
+router.get('/config', (req, res) => {
+  res.json({
+    supabaseUrl:  process.env.SUPABASE_URL  || null,
+    supabaseAnon: process.env.SUPABASE_ANON_KEY || null
+  });
+});
+
 export default router;

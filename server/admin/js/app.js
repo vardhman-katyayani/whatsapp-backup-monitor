@@ -5,6 +5,67 @@
 const API_BASE = '/api';
 
 // ============================================
+// Supabase Realtime + Auto-Polling
+// ============================================
+
+let _supabaseClient = null;
+let _pollTimers = [];
+
+async function initSupabaseLive() {
+  try {
+    const res = await fetch(`${API_BASE}/config`);
+    const cfg = await res.json();
+    if (!cfg.supabaseUrl || !cfg.supabaseAnon) return;
+
+    _supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnon);
+
+    // Subscribe to pipeline_logs inserts/updates → refresh dashboard & logs
+    _supabaseClient
+      .channel('pipeline_logs_live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_logs' }, () => {
+        const page = (window.location.hash || '#/').replace('#/', '') || 'dashboard';
+        if (page === 'dashboard') initDashboard();
+        if (page === 'logs') initLogs();
+      })
+      .subscribe();
+
+    // Subscribe to messages inserts → refresh dashboard stats
+    _supabaseClient
+      .channel('messages_live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+        const page = (window.location.hash || '#/').replace('#/', '') || 'dashboard';
+        if (page === 'dashboard') initDashboard();
+      })
+      .subscribe();
+
+    document.getElementById('live-indicator').style.display = 'inline-flex';
+    console.log('[Live] Supabase realtime connected');
+  } catch (e) {
+    console.warn('[Live] Supabase realtime unavailable, using polling fallback');
+    startPollingFallback();
+  }
+}
+
+function startPollingFallback() {
+  // Poll every 30s when on dashboard or logs
+  const timer = setInterval(() => {
+    const page = (window.location.hash || '#/').replace('#/', '') || 'dashboard';
+    if (page === 'dashboard') initDashboard();
+    if (page === 'logs') initLogs();
+  }, 30000);
+  _pollTimers.push(timer);
+  document.getElementById('live-indicator').style.display = 'inline-flex';
+}
+
+function stopLive() {
+  _pollTimers.forEach(clearInterval);
+  _pollTimers = [];
+  if (_supabaseClient) {
+    _supabaseClient.removeAllChannels();
+  }
+}
+
+// ============================================
 // Router
 // ============================================
 
@@ -442,14 +503,28 @@ window.triggerAnalysis = async function() {
 // Sync Logs
 // ============================================
 
+let _logsLiveTimer = null;
+
 async function initLogs() {
+  await _fetchAndRenderLogs();
+
+  // If a sync is currently in-progress, poll every 8s for live status
+  clearInterval(_logsLiveTimer);
+  _logsLiveTimer = setInterval(async () => {
+    const page = (window.location.hash || '#/').replace('#/', '') || 'dashboard';
+    if (page !== 'logs') { clearInterval(_logsLiveTimer); return; }
+    await _fetchAndRenderLogs();
+  }, 8000);
+}
+
+async function _fetchAndRenderLogs() {
   try {
     const res = await fetch(`${API_BASE}/logs?limit=100`);
     const data = await res.json();
     renderLogs(data.logs || []);
   } catch (error) {
-    document.getElementById('logs-table').innerHTML =
-      '<tr><td colspan="8" class="loading">Error loading logs</td></tr>';
+    const tbl = document.getElementById('logs-table');
+    if (tbl) tbl.innerHTML = '<tr><td colspan="8" class="loading">Error loading logs</td></tr>';
   }
 }
 
@@ -793,4 +868,7 @@ function formatMarkdown(text) {
     .replace(/\n/g, '<br>');
 }
 
-document.addEventListener('DOMContentLoaded', initRouter);
+document.addEventListener('DOMContentLoaded', () => {
+  initRouter();
+  initSupabaseLive();
+});

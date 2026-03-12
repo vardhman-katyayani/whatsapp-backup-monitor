@@ -66,6 +66,9 @@
       <header class="header">
         <h1 id="page-title">Dashboard</h1>
         <div class="header-actions">
+          <span id="live-indicator" class="live-badge" style="display:none">
+            <span class="live-dot"></span> LIVE
+          </span>
           <button class="btn btn-icon" onclick="location.reload()">🔄</button>
         </div>
       </header>
@@ -395,6 +398,7 @@
     </div>
   </template>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
