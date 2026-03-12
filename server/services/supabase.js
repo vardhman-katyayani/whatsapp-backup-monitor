@@ -250,13 +250,13 @@ export async function getDashboardStats() {
       .from('messages')
       .select('*', { count: 'exact', head: true });
     
-    // Get today's messages
+    // Get today's messages by actual message timestamp (not DB insert time)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const { count: messagesToday } = await supabase
       .from('messages')
       .select('*', { count: 'exact', head: true })
-      .gte('created_at', today.toISOString());
+      .gte('timestamp', today.toISOString());
     
     // Get recent pipeline logs
     const { data: recentLogs } = await supabase
@@ -299,11 +299,13 @@ export async function getDashboardStats() {
 export async function getMessagesForChatPaged(chatId, limit = 50, offset = 0) {
   if (!supabase) return { data: [], error: 'Supabase not configured' };
 
+  // Fetch newest first (DESC), then caller reverses for chronological display.
+  // "Load more" increments offset to get older messages.
   const { data, error } = await supabase
     .from('messages')
     .select('*')
     .eq('chat_id', chatId)
-    .order('timestamp', { ascending: true })
+    .order('timestamp', { ascending: false })
     .range(offset, offset + limit - 1);
 
   return { data, error };

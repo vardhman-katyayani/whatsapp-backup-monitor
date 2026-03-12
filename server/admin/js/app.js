@@ -254,10 +254,18 @@ async function manualSync(phoneId, btn) {
 
 function viewMessages(phoneId) {
   window.location.hash = '#/messages';
-  setTimeout(() => {
+  // Poll until the select is populated (phones API fetch may take >100ms)
+  let attempts = 0;
+  const trySelect = () => {
     const sel = document.getElementById('msg-phone-select');
-    if (sel) { sel.value = phoneId; sel.dispatchEvent(new Event('change')); }
-  }, 100);
+    if (sel && sel.options.length > 1) {
+      sel.value = phoneId;
+      sel.dispatchEvent(new Event('change'));
+    } else if (attempts++ < 20) {
+      setTimeout(trySelect, 150);
+    }
+  };
+  setTimeout(trySelect, 150);
 }
 
 // ============================================
@@ -361,12 +369,14 @@ function renderChatList(chats) {
   }
 
   list.innerHTML = chats.map(chat => {
-    const name = escapeHtml(chatDisplayName(chat));
-    const initials = getInitials(chatDisplayName(chat));
+    const displayName = chatDisplayName(chat);
+    const name = escapeHtml(displayName);
+    const safeNameAttr = displayName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const initials = getInitials(displayName);
     const preview = escapeHtml(truncate(chat.last_message_preview || '', 40));
     const msgCount = chat.total_messages || 0;
     return `
-      <div class="wa-chat-item" data-chat-id="${chat.id}" onclick="openChat('${chat.id}', '${name}', '${chat.is_group ? 'group' : 'direct'}', ${chat.total_messages || 0})">
+      <div class="wa-chat-item" data-chat-id="${chat.id}" onclick="openChat('${chat.id}', '${safeNameAttr}', '${chat.is_group ? 'group' : 'direct'}', ${chat.total_messages || 0})">
         <div class="wa-chat-avatar-circle ${chat.is_group ? 'group' : ''}">${chat.is_group ? '👥' : initials}</div>
         <div class="wa-chat-item-info">
           <div class="wa-chat-item-top">
@@ -522,7 +532,8 @@ async function loadMessages(chatId, append = false) {
   try {
     const res = await fetch(`${API_BASE}/messages?chat_id=${chatId}&limit=${MESSAGE_PAGE}&offset=${messageOffset}`);
     const data = await res.json();
-    const messages = data.messages || [];
+    // API returns DESC (newest first) — reverse to show oldest→newest top→bottom
+    const messages = (data.messages || []).reverse();
 
     if (!messages.length && !append) {
       thread.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8696A0">No messages found</div>';
@@ -533,7 +544,10 @@ async function loadMessages(chatId, append = false) {
     const html = messages.map((msg, i) => renderMessageBubble(msg, messages[i - 1])).join('');
 
     if (append) {
+      // Older messages go to the TOP — remember scroll position to avoid jump
+      const prevScrollHeight = thread.scrollHeight;
       thread.insertAdjacentHTML('afterbegin', html);
+      thread.scrollTop = thread.scrollHeight - prevScrollHeight;
     } else {
       thread.innerHTML = html;
       thread.scrollTop = thread.scrollHeight;
@@ -616,7 +630,11 @@ function renderInsights(insights, showPhone = false) {
   grid.innerHTML = insights.map(insight => {
     const sentimentColor = { positive: 'success', negative: 'danger', neutral: 'muted', mixed: 'warning' }[insight.sentiment] || 'muted';
     const hasFlags = insight.red_flags?.length > 0;
-    const chatName = insight.chats?.contact_name || insight.chats?.group_name || 'Unknown Chat';
+    // Format JID numbers into readable phone numbers
+    const rawName = insight.chats?.contact_name || insight.chats?.group_name || '';
+    const chatName = rawName && /^\d{10,15}$/.test(rawName)
+      ? formatJid(insight.chats?.jid || rawName)
+      : (rawName || 'Unknown Chat');
 
     return `
       <div class="insight-card ${hasFlags ? 'flagged' : ''}">

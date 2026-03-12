@@ -1,7 +1,24 @@
 import cron from 'node-cron';
 import { supabase } from '../services/supabase.js';
-import { syncDriveBackups } from './drive-sync.js';
+import { syncDriveBackups, syncSinglePhone } from './drive-sync.js';
 import { analyzePhoneChats } from '../services/ai.js';
+
+// ============================================
+// Sync a single phone's backups
+// ============================================
+export async function syncPhone(phone) {
+  try {
+    if (!phone || !phone.id || !phone.encryption_key) {
+      console.error('[syncPhone] Invalid phone object');
+      return false;
+    }
+    const result = await syncSinglePhone(phone);
+    return result.success > 0;
+  } catch (e) {
+    console.error('[syncPhone] Error:', e.message);
+    return false;
+  }
+}
 
 // ============================================
 // Start all cron jobs

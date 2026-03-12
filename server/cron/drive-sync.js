@@ -190,10 +190,15 @@ async function processFile(drive, phone, file, folderPath) {
         inserted += Math.min(500, newMsgs.length - i);
       }
 
-      // Update phone stats
+      // Update phone stats — get real count from DB (not stale in-memory)
+      const { count: realCount } = await supabase
+        .from('messages').select('*', { count: 'exact', head: true }).eq('phone_id', phone.id);
+      const { count: realChats } = await supabase
+        .from('chats').select('*', { count: 'exact', head: true }).eq('phone_id', phone.id);
       await supabase.from('phones').update({
         last_sync_at: new Date().toISOString(),
-        total_messages: (existing?.length || 0) + inserted
+        total_messages: realCount || 0,
+        total_chats: realChats || 0
       }).eq('id', phone.id);
     }
 
@@ -325,5 +330,66 @@ export async function syncDriveBackups() {
   }
 
   console.log(`\n[DriveSync] ====== Sync Complete — ✅ ${stats.success} | ❌ ${stats.failed} | ⏭ ${stats.skipped} ======\n`);
+  return stats;
+}
+
+// ─── Sync a single phone (called manually via API) ───────────────────────────
+export async function syncSinglePhone(phone) {
+  console.log(`[syncPhone] Starting sync for ${phone.phone_number}`);
+
+  if (!supabase) {
+    console.error('[syncPhone] Supabase not configured');
+    return { success: 0, failed: 0, skipped: 0 };
+  }
+
+  let drive;
+  try {
+    drive = getDriveClient();
+  } catch (err) {
+    console.error('[syncPhone] Drive client error:', err.message);
+    return { success: 0, failed: 0, skipped: 0 };
+  }
+
+  // Find root folder
+  let rootFolderId;
+  try {
+    rootFolderId = await getRootFolderId(drive);
+  } catch (err) {
+    console.error('[syncPhone] Root folder error:', err.message);
+    return { success: 0, failed: 0, skipped: 0 };
+  }
+
+  // Find this phone's folder
+  const topLevel = await listChildren(drive, rootFolderId);
+  const phoneFolder = topLevel.find(f => 
+    f.mimeType === 'application/vnd.google-apps.folder' && 
+    f.name.trim() === phone.phone_number.trim()
+  );
+
+  if (!phoneFolder) {
+    console.warn(`[syncPhone] Phone folder not found for ${phone.phone_number}`);
+    return { success: 0, failed: 0, skipped: 0 };
+  }
+
+  const stats = { success: 0, failed: 0, skipped: 0 };
+
+  // Collect all backup files
+  const files = await collectBackupFiles(drive, phoneFolder.id, phone.phone_number);
+  console.log(`[syncPhone] Found ${files.length} backup file(s)`);
+
+  for (const file of files) {
+    // Skip if already processed
+    if (await alreadyProcessed(phone.id, file.name)) {
+      console.log(`[syncPhone] ⏭  ${file.name} already processed — skipping`);
+      stats.skipped++;
+      continue;
+    }
+
+    const result = await processFile(drive, phone, file, file.folderPath);
+    if (result.success) stats.success++;
+    else stats.failed++;
+  }
+
+  console.log(`[syncPhone] Sync complete for ${phone.phone_number}: ✅ ${stats.success} | ❌ ${stats.failed}`);
   return stats;
 }
