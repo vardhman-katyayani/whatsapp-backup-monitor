@@ -266,55 +266,125 @@ function viewMessages(phoneId) {
 
 let currentChatId = null;
 let messageOffset = 0;
+let _allChats = [];
 const MESSAGE_PAGE = 50;
+
+// Format JID (e.g. "919876543210@s.whatsapp.net" → "+91 98765 43210")
+function formatJid(jid) {
+  if (!jid) return 'Unknown';
+  const num = jid.split('@')[0];
+  if (num.length === 12 && num.startsWith('91')) {
+    return '+91 ' + num.slice(2, 7) + ' ' + num.slice(7);
+  }
+  if (num.length === 10) return '+91 ' + num.slice(0, 5) + ' ' + num.slice(5);
+  return '+' + num;
+}
+
+// Get display name for a chat
+function chatDisplayName(chat) {
+  if (chat.is_group) return chat.group_name || chat.subject || formatJid(chat.jid);
+  // contact_name from DB is usually the JID number — format it nicely
+  const stored = chat.contact_name;
+  if (stored && !/^\d{10,15}$/.test(stored)) return stored; // real name
+  return formatJid(chat.jid); // fallback to formatted phone
+}
 
 async function initMessages() {
   await loadPhonesIntoSelect('msg-phone-select');
+
   document.getElementById('msg-phone-select').addEventListener('change', async (e) => {
+    document.getElementById('chat-search-input').value = '';
     if (e.target.value) await loadChats(e.target.value);
     else document.getElementById('chats-list').innerHTML = '<div class="chat-empty">Select a phone</div>';
   });
+
+  document.getElementById('chat-search-input').addEventListener('input', (e) => {
+    filterChatList(e.target.value.toLowerCase().trim());
+  });
+}
+
+function filterChatList(query) {
+  const list = document.getElementById('chats-list');
+  if (!_allChats.length) return;
+
+  const filtered = query
+    ? _allChats.filter(c => {
+        const name = chatDisplayName(c).toLowerCase();
+        const jid  = (c.jid || '').toLowerCase();
+        const prev = (c.last_message_preview || '').toLowerCase();
+        return name.includes(query) || jid.includes(query) || prev.includes(query);
+      })
+    : _allChats;
+
+  renderChatList(filtered);
 }
 
 async function loadChats(phoneId) {
   const list = document.getElementById('chats-list');
   list.innerHTML = '<div class="chat-empty">Loading chats...</div>';
+  _allChats = [];
 
   try {
-    const res = await fetch(`${API_BASE}/chats?phone_id=${phoneId}&limit=100`);
+    const res = await fetch(`${API_BASE}/chats?phone_id=${phoneId}&limit=500`);
     const data = await res.json();
-    const chats = data.chats || [];
 
-    if (!chats.length) {
-      list.innerHTML = '<div class="chat-empty">No chats found</div>';
+    if (!res.ok) {
+      list.innerHTML = `<div class="chat-empty">Error: ${data.error || res.statusText}</div>`;
       return;
     }
 
-    list.innerHTML = chats.map(chat => `
-      <div class="chat-item" onclick="openChat('${chat.id}', ${JSON.stringify(chat.contact_name || chat.group_name || 'Unknown').replace(/"/g, '&quot;')}, '${chat.is_group ? 'group' : 'direct'}')">
+    // Filter out broadcast/status junk
+    _allChats = (data.chats || []).filter(c =>
+      c.jid !== 'status@broadcast' &&
+      !c.jid?.endsWith('@broadcast') &&
+      c.total_messages > 0
+    );
+
+    if (!_allChats.length) {
+      list.innerHTML = '<div class="chat-empty">No chats found for this phone.<br>Run a sync to import backup data.</div>';
+      return;
+    }
+
+    renderChatList(_allChats);
+  } catch (e) {
+    list.innerHTML = `<div class="chat-empty">Error loading chats: ${e.message}</div>`;
+  }
+}
+
+function renderChatList(chats) {
+  const list = document.getElementById('chats-list');
+
+  if (!chats.length) {
+    list.innerHTML = '<div class="chat-empty">No chats match your search</div>';
+    return;
+  }
+
+  list.innerHTML = chats.map(chat => {
+    const name = escapeHtml(chatDisplayName(chat));
+    const preview = escapeHtml(truncate(chat.last_message_preview || '', 45));
+    const type = chat.is_group ? 'group' : 'direct';
+    return `
+      <div class="chat-item" data-chat-id="${chat.id}" onclick="openChat('${chat.id}', '${name}', '${type}')">
         <div class="chat-avatar">${chat.is_group ? '👥' : '👤'}</div>
         <div class="chat-info">
-          <div class="chat-name">${chat.contact_name || chat.group_name || 'Unknown'}</div>
-          <div class="chat-preview">${truncate(chat.last_message_preview || '', 40)}</div>
+          <div class="chat-name">${name}</div>
+          <div class="chat-preview">${preview || '<span style="opacity:.4">No preview</span>'}</div>
         </div>
         <div class="chat-meta">
           <div class="chat-time">${formatTime(chat.last_message_at)}</div>
           <div class="chat-count">${formatNumber(chat.total_messages || 0)}</div>
         </div>
       </div>
-    `).join('');
-  } catch (e) {
-    list.innerHTML = '<div class="chat-empty">Error loading chats</div>';
-  }
+    `;
+  }).join('');
 }
 
 async function openChat(chatId, chatName, chatType) {
   currentChatId = chatId;
   messageOffset = 0;
 
-  // Highlight selected chat
   document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
-  event.currentTarget.classList.add('active');
+  document.querySelector(`[data-chat-id="${chatId}"]`)?.classList.add('active');
 
   document.getElementById('thread-header').innerHTML = `
     <div class="thread-title">${chatType === 'group' ? '👥' : '👤'} ${chatName}</div>
@@ -342,12 +412,23 @@ async function loadMessages(chatId, append = false) {
       return;
     }
 
-    const html = messages.map(msg => `
+    const html = messages.map(msg => {
+      const senderLabel = (!msg.from_me && msg.sender_name)
+        ? `<div class="message-sender">${escapeHtml(msg.sender_name)}</div>`
+        : '';
+      const mediaLabel = msg.message_type && msg.message_type !== 'text'
+        ? `<span class="msg-media-tag">${msg.message_type}</span> `
+        : '';
+      const text = msg.text_data
+        ? escapeHtml(msg.text_data)
+        : `<span style="opacity:.5">[${msg.message_type || 'media'}]</span>`;
+      return `
       <div class="message-bubble ${msg.from_me ? 'sent' : 'received'}">
-        <div class="message-text">${escapeHtml(msg.text_data || '[media]')}</div>
+        ${senderLabel}
+        <div class="message-text">${mediaLabel}${text}</div>
         <div class="message-time">${formatTime(msg.timestamp)}</div>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
 
     if (append) {
       thread.insertAdjacentHTML('afterbegin', html);

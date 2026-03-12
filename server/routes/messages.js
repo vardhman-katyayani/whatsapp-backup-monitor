@@ -20,15 +20,15 @@ const router = Router();
 // ============================================
 router.get('/chats', async (req, res) => {
   try {
-    const { phone_id, limit = 50, offset = 0 } = req.query;
+    const { phone_id, limit = 100, offset = 0 } = req.query;
 
     if (!phone_id) return res.status(400).json({ error: 'phone_id is required' });
 
-    const { data, error } = await getChatsForPhonePaged(phone_id, parseInt(limit), parseInt(offset));
+    const { data, error } = await getChatsForPhonePaged(phone_id, Math.min(parseInt(limit), 1000), parseInt(offset));
 
     if (error) return res.status(500).json({ error });
 
-    res.json({ chats: data });
+    res.json({ chats: data || [] });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

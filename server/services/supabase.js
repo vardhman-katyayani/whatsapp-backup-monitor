@@ -309,14 +309,14 @@ export async function getMessagesForChatPaged(chatId, limit = 50, offset = 0) {
   return { data, error };
 }
 
-export async function getChatsForPhonePaged(phoneId, limit = 50, offset = 0) {
+export async function getChatsForPhonePaged(phoneId, limit = 100, offset = 0) {
   if (!supabase) return { data: [], error: 'Supabase not configured' };
 
   const { data, error } = await supabase
     .from('chats')
     .select('*')
     .eq('phone_id', phoneId)
-    .order('last_message_at', { ascending: false })
+    .order('total_messages', { ascending: false })  // most active chats first
     .range(offset, offset + limit - 1);
 
   return { data, error };
