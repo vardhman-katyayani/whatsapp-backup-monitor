@@ -261,7 +261,7 @@ function viewMessages(phoneId) {
 }
 
 // ============================================
-// Messages Viewer
+// Messages Viewer — WhatsApp-like UI
 // ============================================
 
 let currentChatId = null;
@@ -269,24 +269,27 @@ let messageOffset = 0;
 let _allChats = [];
 const MESSAGE_PAGE = 50;
 
-// Format JID (e.g. "919876543210@s.whatsapp.net" → "+91 98765 43210")
+// Format JID to readable phone number
 function formatJid(jid) {
   if (!jid) return 'Unknown';
   const num = jid.split('@')[0];
-  if (num.length === 12 && num.startsWith('91')) {
+  if (/^\d{12}$/.test(num) && num.startsWith('91')) {
     return '+91 ' + num.slice(2, 7) + ' ' + num.slice(7);
   }
-  if (num.length === 10) return '+91 ' + num.slice(0, 5) + ' ' + num.slice(5);
+  if (/^\d{10}$/.test(num)) return '+91 ' + num.slice(0, 5) + ' ' + num.slice(5);
   return '+' + num;
 }
 
-// Get display name for a chat
 function chatDisplayName(chat) {
   if (chat.is_group) return chat.group_name || chat.subject || formatJid(chat.jid);
-  // contact_name from DB is usually the JID number — format it nicely
   const stored = chat.contact_name;
-  if (stored && !/^\d{10,15}$/.test(stored)) return stored; // real name
-  return formatJid(chat.jid); // fallback to formatted phone
+  if (stored && !/^\d{10,15}$/.test(stored)) return stored;
+  return formatJid(chat.jid);
+}
+
+function getInitials(name) {
+  if (!name) return '?';
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
 async function initMessages() {
@@ -295,7 +298,10 @@ async function initMessages() {
   document.getElementById('msg-phone-select').addEventListener('change', async (e) => {
     document.getElementById('chat-search-input').value = '';
     if (e.target.value) await loadChats(e.target.value);
-    else document.getElementById('chats-list').innerHTML = '<div class="chat-empty">Select a phone</div>';
+    else {
+      _allChats = [];
+      document.getElementById('chats-list').innerHTML = '<div class="wa-empty-state">Select a phone to view chats</div>';
+    }
   });
 
   document.getElementById('chat-search-input').addEventListener('input', (e) => {
@@ -304,9 +310,7 @@ async function initMessages() {
 }
 
 function filterChatList(query) {
-  const list = document.getElementById('chats-list');
   if (!_allChats.length) return;
-
   const filtered = query
     ? _allChats.filter(c => {
         const name = chatDisplayName(c).toLowerCase();
@@ -315,13 +319,12 @@ function filterChatList(query) {
         return name.includes(query) || jid.includes(query) || prev.includes(query);
       })
     : _allChats;
-
   renderChatList(filtered);
 }
 
 async function loadChats(phoneId) {
   const list = document.getElementById('chats-list');
-  list.innerHTML = '<div class="chat-empty">Loading chats...</div>';
+  list.innerHTML = '<div class="wa-empty-state">Loading chats...</div>';
   _allChats = [];
 
   try {
@@ -329,11 +332,10 @@ async function loadChats(phoneId) {
     const data = await res.json();
 
     if (!res.ok) {
-      list.innerHTML = `<div class="chat-empty">Error: ${data.error || res.statusText}</div>`;
+      list.innerHTML = `<div class="wa-empty-state">Error: ${data.error || res.statusText}</div>`;
       return;
     }
 
-    // Filter out broadcast/status junk
     _allChats = (data.chats || []).filter(c =>
       c.jid !== 'status@broadcast' &&
       !c.jid?.endsWith('@broadcast') &&
@@ -341,63 +343,179 @@ async function loadChats(phoneId) {
     );
 
     if (!_allChats.length) {
-      list.innerHTML = '<div class="chat-empty">No chats found for this phone.<br>Run a sync to import backup data.</div>';
+      list.innerHTML = '<div class="wa-empty-state">No chats found.<br>Run a sync to import backup data.</div>';
       return;
     }
 
     renderChatList(_allChats);
   } catch (e) {
-    list.innerHTML = `<div class="chat-empty">Error loading chats: ${e.message}</div>`;
+    list.innerHTML = `<div class="wa-empty-state">Error: ${e.message}</div>`;
   }
 }
 
 function renderChatList(chats) {
   const list = document.getElementById('chats-list');
-
   if (!chats.length) {
-    list.innerHTML = '<div class="chat-empty">No chats match your search</div>';
+    list.innerHTML = '<div class="wa-empty-state">No chats match your search</div>';
     return;
   }
 
   list.innerHTML = chats.map(chat => {
     const name = escapeHtml(chatDisplayName(chat));
-    const preview = escapeHtml(truncate(chat.last_message_preview || '', 45));
-    const type = chat.is_group ? 'group' : 'direct';
+    const initials = getInitials(chatDisplayName(chat));
+    const preview = escapeHtml(truncate(chat.last_message_preview || '', 40));
+    const msgCount = chat.total_messages || 0;
     return `
-      <div class="chat-item" data-chat-id="${chat.id}" onclick="openChat('${chat.id}', '${name}', '${type}')">
-        <div class="chat-avatar">${chat.is_group ? '👥' : '👤'}</div>
-        <div class="chat-info">
-          <div class="chat-name">${name}</div>
-          <div class="chat-preview">${preview || '<span style="opacity:.4">No preview</span>'}</div>
-        </div>
-        <div class="chat-meta">
-          <div class="chat-time">${formatTime(chat.last_message_at)}</div>
-          <div class="chat-count">${formatNumber(chat.total_messages || 0)}</div>
+      <div class="wa-chat-item" data-chat-id="${chat.id}" onclick="openChat('${chat.id}', '${name}', '${chat.is_group ? 'group' : 'direct'}', ${chat.total_messages || 0})">
+        <div class="wa-chat-avatar-circle ${chat.is_group ? 'group' : ''}">${chat.is_group ? '👥' : initials}</div>
+        <div class="wa-chat-item-info">
+          <div class="wa-chat-item-top">
+            <div class="wa-chat-item-name">${name}</div>
+            <div class="wa-chat-item-time">${formatTime(chat.last_message_at)}</div>
+          </div>
+          <div class="wa-chat-item-bottom">
+            <div class="wa-chat-item-preview">${preview || '<span style="opacity:.4">No preview</span>'}</div>
+            ${msgCount > 0 ? `<div class="wa-chat-item-count">${msgCount > 999 ? '999+' : msgCount}</div>` : ''}
+          </div>
         </div>
       </div>
     `;
   }).join('');
 }
 
-async function openChat(chatId, chatName, chatType) {
+async function openChat(chatId, chatName, chatType, totalMsgs) {
   currentChatId = chatId;
   messageOffset = 0;
 
-  document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.wa-chat-item').forEach(el => el.classList.remove('active'));
   document.querySelector(`[data-chat-id="${chatId}"]`)?.classList.add('active');
 
-  document.getElementById('thread-header').innerHTML = `
-    <div class="thread-title">${chatType === 'group' ? '👥' : '👤'} ${chatName}</div>
-  `;
+  // Switch from welcome to chat view
+  document.getElementById('wa-welcome').style.display = 'none';
+  const chatOpen = document.getElementById('wa-chat-open');
+  chatOpen.style.display = 'flex';
+
+  // Set header
+  document.getElementById('wa-header-avatar').textContent = chatType === 'group' ? '👥' : '👤';
+  document.getElementById('wa-header-name').textContent = chatName;
+  document.getElementById('wa-header-sub').textContent = `${formatNumber(totalMsgs)} messages`;
 
   await loadMessages(chatId, false);
+}
+
+// Detect URLs in text and return HTML with clickable links
+function linkifyText(text) {
+  const urlPattern = /https?:\/\/[^\s<>"']+/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = urlPattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(`<span class="wa-text">${escapeHtml(text.slice(lastIndex, match.index))}</span>`);
+    }
+    const url = match[0];
+    let domain = '';
+    try { domain = new URL(url).hostname; } catch (e) { domain = url.slice(0, 30); }
+    parts.push(`
+      <div class="wa-link-preview">
+        <a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(truncate(url, 60))}</a>
+        <div class="wa-link-domain">🔗 ${escapeHtml(domain)}</div>
+      </div>
+    `);
+    lastIndex = match.index + url.length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(`<span class="wa-text">${escapeHtml(text.slice(lastIndex))}</span>`);
+  }
+
+  return parts.length ? parts.join('') : `<span class="wa-text">${escapeHtml(text)}</span>`;
+}
+
+// Render a single message as WhatsApp bubble HTML
+function renderMessageBubble(msg, prevMsg) {
+  const isSystem = msg.message_type === 'system' || msg.message_type === 'deleted';
+  const dir = msg.from_me ? 'sent' : (isSystem ? 'system' : 'received');
+
+  // Date separator
+  let dateSep = '';
+  if (msg.timestamp) {
+    const msgDate = new Date(msg.timestamp).toDateString();
+    const prevDate = prevMsg?.timestamp ? new Date(prevMsg.timestamp).toDateString() : null;
+    if (msgDate !== prevDate) {
+      const today = new Date().toDateString();
+      const yesterday = new Date(Date.now() - 86400000).toDateString();
+      let dateLabel = msgDate === today ? 'Today' : msgDate === yesterday ? 'Yesterday' : new Date(msg.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+      dateSep = `<div class="wa-date-sep"><span>${dateLabel}</span></div>`;
+    }
+  }
+
+  // Deleted message
+  if (msg.message_type === 'deleted') {
+    return dateSep + `<div class="wa-msg ${dir}"><div class="wa-bubble"><span class="wa-deleted">This message was deleted</span></div></div>`;
+  }
+
+  // System message
+  if (isSystem) {
+    return dateSep + `<div class="wa-msg system"><div class="wa-bubble">${escapeHtml(msg.text_data || 'System message')}</div></div>`;
+  }
+
+  // Sender name (for groups, received messages)
+  const senderHtml = (!msg.from_me && msg.sender_name)
+    ? `<div class="wa-sender">${escapeHtml(msg.sender_name)}</div>` : '';
+
+  // Media placeholder icons
+  const mediaIcons = { image: '🖼️', video: '🎬', audio: '🎵', document: '📄', sticker: '🌟', gif: '🎞️', contact: '👤', location: '📍', voice: '🎤' };
+
+  let contentHtml = '';
+
+  if (msg.message_type !== 'text' && msg.message_type !== 'other') {
+    // Media card
+    const icon = mediaIcons[msg.message_type] || '📎';
+    const typeLabel = msg.message_type.charAt(0).toUpperCase() + msg.message_type.slice(1);
+    const subLabel = msg.media_filename ? escapeHtml(msg.media_filename) : (msg.media_size ? formatFileSize(msg.media_size) : 'Encrypted in backup');
+    contentHtml = `
+      <div class="wa-media-card">
+        <div class="wa-media-icon">${icon}</div>
+        <div class="wa-media-info">
+          <div class="wa-media-type">${typeLabel}</div>
+          <div class="wa-media-sub">${subLabel}</div>
+        </div>
+      </div>
+    `;
+    // Add caption if any
+    if (msg.text_data) contentHtml += `<div class="wa-text">${escapeHtml(msg.text_data)}</div>`;
+  } else if (msg.text_data) {
+    // Text — check for URLs
+    contentHtml = linkifyText(msg.text_data);
+  } else {
+    contentHtml = '<span style="color:#8696A0;font-style:italic">Empty message</span>';
+  }
+
+  // Time
+  const timeStr = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
+  const tickHtml = msg.from_me ? `<span class="wa-tick">✓✓</span>` : '';
+
+  return dateSep + `
+    <div class="wa-msg ${dir}">
+      <div class="wa-bubble">
+        ${senderHtml}
+        ${contentHtml}
+        <div class="wa-time-row">
+          <span class="wa-time">${timeStr}</span>
+          ${tickHtml}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 async function loadMessages(chatId, append = false) {
   const thread = document.getElementById('message-thread');
 
   if (!append) {
-    thread.innerHTML = '<div class="thread-empty">Loading messages...</div>';
+    thread.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8696A0">Loading messages...</div>';
     messageOffset = 0;
   }
 
@@ -407,28 +525,12 @@ async function loadMessages(chatId, append = false) {
     const messages = data.messages || [];
 
     if (!messages.length && !append) {
-      thread.innerHTML = '<div class="thread-empty">No messages found</div>';
+      thread.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8696A0">No messages found</div>';
       document.getElementById('thread-load-more').style.display = 'none';
       return;
     }
 
-    const html = messages.map(msg => {
-      const senderLabel = (!msg.from_me && msg.sender_name)
-        ? `<div class="message-sender">${escapeHtml(msg.sender_name)}</div>`
-        : '';
-      const mediaLabel = msg.message_type && msg.message_type !== 'text'
-        ? `<span class="msg-media-tag">${msg.message_type}</span> `
-        : '';
-      const text = msg.text_data
-        ? escapeHtml(msg.text_data)
-        : `<span style="opacity:.5">[${msg.message_type || 'media'}]</span>`;
-      return `
-      <div class="message-bubble ${msg.from_me ? 'sent' : 'received'}">
-        ${senderLabel}
-        <div class="message-text">${mediaLabel}${text}</div>
-        <div class="message-time">${formatTime(msg.timestamp)}</div>
-      </div>`;
-    }).join('');
+    const html = messages.map((msg, i) => renderMessageBubble(msg, messages[i - 1])).join('');
 
     if (append) {
       thread.insertAdjacentHTML('afterbegin', html);
@@ -442,7 +544,7 @@ async function loadMessages(chatId, append = false) {
       messages.length === MESSAGE_PAGE ? 'flex' : 'none';
 
   } catch (e) {
-    if (!append) thread.innerHTML = '<div class="thread-empty">Error loading messages</div>';
+    if (!append) thread.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8696A0">Error: ${e.message}</div>`;
   }
 }
 

@@ -185,30 +185,46 @@
   <!-- Messages Viewer -->
   <template id="messages-template">
     <div class="messages-page">
-      <div class="messages-layout">
-        <!-- Left: Chats list -->
-        <div class="chats-panel">
-          <div class="panel-header">
-            <select id="msg-phone-select" class="select">
-              <option value="">-- Select Phone --</option>
+      <div class="wa-layout">
+        <!-- Left sidebar: phone selector + chat list -->
+        <div class="wa-sidebar">
+          <div class="wa-sidebar-header">
+            <div class="wa-sidebar-title">Chats</div>
+            <select id="msg-phone-select" class="wa-phone-select">
+              <option value="">Select Agent Phone</option>
             </select>
-            <input type="text" id="chat-search-input" class="input" placeholder="Search chats..." style="margin-top:8px;width:100%;box-sizing:border-box;">
           </div>
-          <div id="chats-list" class="chats-list">
-            <div class="chat-empty">Select a phone to view chats</div>
+          <div class="wa-search-bar">
+            <input type="text" id="chat-search-input" class="wa-search-input" placeholder="🔍  Search or start new chat">
+          </div>
+          <div id="chats-list" class="wa-chat-list">
+            <div class="wa-empty-state">Select a phone to view chats</div>
           </div>
         </div>
 
-        <!-- Right: Message thread -->
-        <div class="thread-panel">
-          <div class="thread-header" id="thread-header">
-            <div class="thread-title">Select a chat</div>
+        <!-- Right: message thread -->
+        <div class="wa-chat-area" id="wa-chat-area">
+          <!-- Welcome screen when no chat selected -->
+          <div class="wa-welcome" id="wa-welcome">
+            <div class="wa-welcome-icon">💬</div>
+            <div class="wa-welcome-title">WhatsApp Monitor</div>
+            <div class="wa-welcome-sub">Select a chat to view messages</div>
           </div>
-          <div id="message-thread" class="message-thread">
-            <div class="thread-empty">Select a chat to view messages</div>
-          </div>
-          <div class="thread-load-more" id="thread-load-more" style="display:none">
-            <button class="btn btn-secondary" onclick="loadMoreMessages()">Load more messages</button>
+          <!-- Chat open state (hidden initially) -->
+          <div class="wa-chat-open" id="wa-chat-open" style="display:none;flex-direction:column;height:100%">
+            <div class="wa-chat-header" id="wa-chat-header">
+              <div class="wa-chat-avatar" id="wa-header-avatar">👤</div>
+              <div class="wa-chat-header-info">
+                <div class="wa-chat-header-name" id="wa-header-name">--</div>
+                <div class="wa-chat-header-sub" id="wa-header-sub"></div>
+              </div>
+            </div>
+            <div class="wa-messages-bg" id="message-thread">
+              <!-- messages rendered here -->
+            </div>
+            <div class="wa-load-more" id="thread-load-more" style="display:none">
+              <button class="wa-load-more-btn" onclick="loadMoreMessages()">Load older messages</button>
+            </div>
           </div>
         </div>
       </div>
