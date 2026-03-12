@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import dotenv from 'dotenv';
@@ -14,6 +15,8 @@ import adminRoutes from './routes/admin.js';
 import messageRoutes from './routes/messages.js';
 import agentRoutes from './routes/agent.js';
 import chatRoutes from './routes/chat.js';
+import authRoutes from './routes/auth.js';
+import { requireAuth } from './middleware/auth.js';
 import { startCronJobs } from './cron/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -23,9 +26,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Serve admin dashboard static files
 app.use('/admin', express.static(join(__dirname, 'admin')));
@@ -85,15 +89,24 @@ const swaggerOptions = {
 };
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerOptions));
 
-// API Routes
-app.use('/api', apiRoutes);
-app.use('/api', messageRoutes);
-app.use('/api/agent', agentRoutes);
-app.use('/api', chatRoutes);
+// Auth routes (public — no auth middleware)
+app.use('/api/auth', authRoutes);
 
-// Admin page routes (serve HTML for SPA-like navigation)
+// All other API routes require SSO authentication
+app.use('/api', requireAuth, apiRoutes);
+app.use('/api', requireAuth, messageRoutes);
+app.use('/api/agent', requireAuth, agentRoutes);
+app.use('/api', requireAuth, chatRoutes);
+
+// Admin login page (public)
+app.get('/admin/login.html', (req, res) => res.sendFile(join(__dirname, 'admin', 'login.html')));
+// Admin dashboard (auth guard is in the HTML itself)
 app.get('/admin', (req, res) => res.sendFile(join(__dirname, 'admin', 'index.html')));
-app.get('/admin/*', (req, res) => res.sendFile(join(__dirname, 'admin', 'index.html')));
+app.get('/admin/*', (req, res) => {
+  const file = req.path.replace('/admin/', '');
+  if (['login.html', 'js/app.js', 'css/admin.css'].some(f => req.path.endsWith(f))) return;
+  res.sendFile(join(__dirname, 'admin', 'index.html'));
+});
 
 // Agent portal
 app.get('/portal', (_req, res) => res.sendFile(join(__dirname, 'portal', 'index.html')));

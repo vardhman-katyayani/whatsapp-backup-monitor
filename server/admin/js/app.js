@@ -4,6 +4,28 @@
 
 const API_BASE = '/api';
 
+// Authenticated fetch — includes credentials cookie, handles 401
+async function apiFetch(url, options = {}) {
+  const res = await fetch(url, { ...options, credentials: 'include' });
+  if (res.status === 401) {
+    // Token expired — try refresh first
+    const refreshed = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+    if (refreshed.ok) {
+      // Retry original request
+      return fetch(url, { ...options, credentials: 'include' });
+    }
+    // Refresh failed — go to login
+    window.location.replace('/admin/login.html');
+    return new Response('{}', { status: 401 });
+  }
+  return res;
+}
+
+async function doLogout() {
+  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+  window.location.replace('/admin/login.html');
+}
+
 // ============================================
 // Supabase Realtime + Auto-Polling
 // ============================================
@@ -13,7 +35,7 @@ let _pollTimers = [];
 
 async function initSupabaseLive() {
   try {
-    const res = await fetch(`${API_BASE}/config`);
+    const res = await apiFetch(`${API_BASE}/config`);
     const cfg = await res.json();
     if (!cfg.supabaseUrl || !cfg.supabaseAnon) return;
 
@@ -124,7 +146,7 @@ function loadPage(page) {
 
 async function initDashboard() {
   try {
-    const response = await fetch(`${API_BASE}/stats`);
+    const response = await apiFetch(`${API_BASE}/stats`);
     const data = await response.json();
 
     document.getElementById('stat-phones').textContent = formatNumber(data.totalPhones);
@@ -161,7 +183,7 @@ let phonesData = [];
 
 async function initPhones() {
   try {
-    const response = await fetch(`${API_BASE}/phones`);
+    const response = await apiFetch(`${API_BASE}/phones`);
     const data = await response.json();
     phonesData = data.phones || [];
     renderPhones(phonesData);
@@ -243,7 +265,7 @@ async function manualSync(phoneId, btn) {
   btn.disabled = true;
   btn.textContent = '⏳ Syncing...';
   try {
-    const res = await fetch(`${API_BASE}/sync/${phoneId}`, { method: 'POST' });
+    const res = await apiFetch(`${API_BASE}/sync/${phoneId}`, { method: 'POST' });
     const data = await res.json();
     btn.textContent = data.error ? '❌ Failed' : '✅ Started';
     setTimeout(() => { btn.textContent = '🔄 Sync'; btn.disabled = false; }, 3000);
@@ -336,7 +358,7 @@ async function loadChats(phoneId) {
   _allChats = [];
 
   try {
-    const res = await fetch(`${API_BASE}/chats?phone_id=${phoneId}&limit=500`);
+    const res = await apiFetch(`${API_BASE}/chats?phone_id=${phoneId}&limit=500`);
     const data = await res.json();
 
     if (!res.ok) {
@@ -530,7 +552,7 @@ async function loadMessages(chatId, append = false) {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/messages?chat_id=${chatId}&limit=${MESSAGE_PAGE}&offset=${messageOffset}`);
+    const res = await apiFetch(`${API_BASE}/messages?chat_id=${chatId}&limit=${MESSAGE_PAGE}&offset=${messageOffset}`);
     const data = await res.json();
     // API returns DESC (newest first) — reverse to show oldest→newest top→bottom
     const messages = (data.messages || []).reverse();
@@ -592,7 +614,7 @@ async function loadAIInsights() {
   grid.innerHTML = '<div class="loading-state">Loading insights...</div>';
 
   try {
-    const res = await fetch(`${API_BASE}/ai-insights?phone_id=${phoneId}`);
+    const res = await apiFetch(`${API_BASE}/ai-insights?phone_id=${phoneId}`);
     const data = await res.json();
     let insights = data.insights || [];
 
@@ -611,7 +633,7 @@ async function loadFlaggedInsights() {
   grid.innerHTML = '<div class="loading-state">Loading flagged conversations...</div>';
 
   try {
-    const res = await fetch(`${API_BASE}/ai-insights/flagged`);
+    const res = await apiFetch(`${API_BASE}/ai-insights/flagged`);
     const data = await res.json();
     renderInsights(data.flagged || [], true);
   } catch (e) {
@@ -681,7 +703,7 @@ window.triggerAnalysis = async function() {
   status.textContent = '🤖 AI analysis started. This may take 1-2 minutes depending on the number of chats...';
 
   try {
-    const res = await fetch(`${API_BASE}/analyze/${phoneId}`, { method: 'POST' });
+    const res = await apiFetch(`${API_BASE}/analyze/${phoneId}`, { method: 'POST' });
     const data = await res.json();
 
     if (data.error) {
@@ -720,7 +742,7 @@ async function initLogs() {
 
 async function _fetchAndRenderLogs() {
   try {
-    const res = await fetch(`${API_BASE}/logs?limit=100`);
+    const res = await apiFetch(`${API_BASE}/logs?limit=100`);
     const data = await res.json();
     renderLogs(data.logs || []);
   } catch (error) {
@@ -778,7 +800,7 @@ async function loadPhonesIntoSelect(selectId) {
   if (!select) return;
 
   try {
-    const res = await fetch(`${API_BASE}/phones`);
+    const res = await apiFetch(`${API_BASE}/phones`);
     const data = await res.json();
     const phones = data.phones || [];
 
@@ -821,7 +843,7 @@ async function handleUpload(e) {
     formData.append('phone_id', phoneId);
     setProgress(20, 'upload');
 
-    const res = await fetch(`${API_BASE}/upload-backup`, { method: 'POST', body: formData });
+    const res = await apiFetch(`${API_BASE}/upload-backup`, { method: 'POST', body: formData });
     setProgress(60, 'decrypt');
 
     const result = await res.json();
@@ -1029,7 +1051,7 @@ window.sendChatMessage = async function() {
   container.scrollTop = container.scrollHeight;
 
   try {
-    const res = await fetch(`${API_BASE}/chat`, {
+    const res = await apiFetch(`${API_BASE}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question, history: chatHistory })
@@ -1070,6 +1092,16 @@ function formatMarkdown(text) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Show current user in sidebar
+  const user = window.__currentUser;
+  if (user) {
+    const label = document.getElementById('user-email-label');
+    if (label) {
+      const role = (user.roles || [user.role]).filter(Boolean).join(', ');
+      label.innerHTML = `<span style="font-weight:500;color:var(--text-1)">${user.email || user.name || 'User'}</span><br><span style="font-size:11px;color:var(--text-3)">${role}</span>`;
+    }
+  }
+
   initRouter();
   initSupabaseLive();
 });

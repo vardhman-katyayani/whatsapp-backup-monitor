@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WA Monitor — Sign In</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #0d1117;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #e6edf3;
+    }
+
+    .login-wrap {
+      width: 100%;
+      max-width: 400px;
+      padding: 24px;
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .logo-icon { font-size: 48px; display: block; margin-bottom: 8px; }
+    .logo-title { font-size: 22px; font-weight: 700; color: #e6edf3; }
+    .logo-sub { font-size: 13px; color: #8b949e; margin-top: 4px; }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 28px;
+    }
+
+    .step { display: none; }
+    .step.active { display: block; }
+
+    .step-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #e6edf3;
+    }
+    .step-sub {
+      font-size: 13px;
+      color: #8b949e;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #cdd9e5;
+      margin-bottom: 6px;
+    }
+
+    input[type=email],
+    input[type=password],
+    input[type=text] {
+      width: 100%;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #e6edf3;
+      font-size: 14px;
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+      font-family: inherit;
+    }
+    input:focus { border-color: #388bfd; }
+
+    .field { margin-bottom: 16px; }
+
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      font-family: inherit;
+    }
+    .btn-primary { background: #238636; color: #fff; margin-top: 4px; }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-link {
+      background: none;
+      color: #58a6ff;
+      font-size: 13px;
+      padding: 0;
+      width: auto;
+      margin-top: 12px;
+    }
+    .btn-link:hover { text-decoration: underline; }
+
+    .mfa-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #1c2d3f;
+      border: 1px solid #388bfd44;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      color: #58a6ff;
+      margin-bottom: 16px;
+    }
+
+    .otp-input {
+      text-align: center;
+      font-size: 24px;
+      letter-spacing: 6px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .error {
+      background: #3d1c1c;
+      border: 1px solid #f8514944;
+      border-radius: 6px;
+      color: #f85149;
+      font-size: 13px;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .error.show { display: block; }
+
+    .divider {
+      height: 1px;
+      background: #30363d;
+      margin: 20px 0;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .footer-note {
+      text-align: center;
+      font-size: 12px;
+      color: #484f58;
+      margin-top: 20px;
+    }
+    .footer-note a { color: #58a6ff; text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="logo">
+    <span class="logo-icon">📱</span>
+    <div class="logo-title">WA Monitor</div>
+    <div class="logo-sub">WhatsApp Backup Intelligence</div>
+  </div>
+
+  <div class="card">
+    <!-- Step 1: Email + Password -->
+    <div class="step active" id="step-login">
+      <div class="step-title">Sign in</div>
+      <div class="step-sub">Use your Katyayani SSO account</div>
+
+      <div class="error" id="login-error"></div>
+
+      <div class="field">
+        <label>Email address</label>
+        <input type="email" id="email" placeholder="you@katyayaniorganics.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" id="login-btn" onclick="doLogin()">Sign in</button>
+    </div>
+
+    <!-- Step 2a: Email OTP -->
+    <div class="step" id="step-email-otp">
+      <div class="mfa-badge">📧 Email OTP</div>
+      <div class="step-title">Check your email</div>
+      <div class="step-sub">We sent a one-time code to <strong id="otp-email-label"></strong></div>
+
+      <div class="error" id="otp-error"></div>
+
+      <div class="field">
+        <label>One-time code</label>
+        <input type="text" id="email-otp" class="otp-input" placeholder="000000" maxlength="8" inputmode="numeric" autocomplete="one-time-code">
+      </div>
+      <button class="btn btn-primary" id="email-otp-btn" onclick="doVerifyOtp('email')">Verify code</button>
+      <br>
+      <button class="btn btn-link" onclick="backToLogin()">← Try a different account</button>
+    </div>
+
+    <!-- Step 2b: TOTP -->
+    <div class="step" id="step-totp">
+      <div class="mfa-badge">🔐 Authenticator</div>
+      <div class="step-title">Two-factor authentication</div>
+      <div class="step-sub">Enter the 6-digit code from your authenticator app</div>
+
+      <div class="error" id="totp-error"></div>
+
+      <div class="field">
+        <label>Authentication code</label>
+        <input type="text" id="totp-code" class="otp-input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+      </div>
+      <button class="btn btn-primary" id="totp-btn" onclick="doVerifyOtp('totp')">Verify</button>
+      <br>
+      <button class="btn btn-link" onclick="backToLogin()">← Back to sign in</button>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    Powered by <a href="https://sso.ko-tech.in" target="_blank">ko-tech SSO</a>
+  </div>
+</div>
+
+<script>
+  const API = '/api/auth';
+  let _tempCode = null;
+
+  function showStep(id) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+
+  function hideError(id) {
+    document.getElementById(id).classList.remove('show');
+  }
+
+  function setLoading(btnId, loading, text) {
+    const btn = document.getElementById(btnId);
+    btn.disabled = loading;
+    btn.innerHTML = loading ? `<span class="spinner"></span>${text}` : text;
+  }
+
+  function backToLogin() {
+    _tempCode = null;
+    hideError('login-error');
+    showStep('step-login');
+    document.getElementById('password').value = '';
+  }
+
+  // Enter key support
+  document.getElementById('password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('email-otp').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doVerifyOtp('email');
+  });
+  document.getElementById('totp-code').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doVerifyOtp('totp');
+  });
+
+  async function doLogin() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    hideError('login-error');
+
+    if (!email || !password) {
+      return showError('login-error', 'Please enter your email and password');
+    }
+
+    setLoading('login-btn', true, 'Signing in…');
+
+    try {
+      const res = await fetch(`${API}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        return showError('login-error', data.error || 'Sign-in failed');
+      }
+
+      if (!data.mfa_required) {
+        // Logged in — go to dashboard
+        window.location.href = '/admin';
+        return;
+      }
+
+      // MFA required
+      _tempCode = data.temp_code;
+      document.getElementById('otp-email-label').textContent = email;
+
+      if (data.mfa_type === 'totp') {
+        showStep('step-totp');
+        setTimeout(() => document.getElementById('totp-code').focus(), 100);
+      } else {
+        showStep('step-email-otp');
+        setTimeout(() => document.getElementById('email-otp').focus(), 100);
+      }
+
+    } catch (e) {
+      showError('login-error', 'Network error — please try again');
+    } finally {
+      setLoading('login-btn', false, 'Sign in');
+    }
+  }
+
+  async function doVerifyOtp(type) {
+    const isTotp = type === 'totp';
+    const otpInput = document.getElementById(isTotp ? 'totp-code' : 'email-otp').value.trim();
+    const errorId = isTotp ? 'totp-error' : 'otp-error';
+    const btnId = isTotp ? 'totp-btn' : 'email-otp-btn';
+
+    hideError(errorId);
+
+    if (!otpInput) return showError(errorId, 'Please enter the code');
+    if (!_tempCode) return showError(errorId, 'Session expired — please sign in again');
+
+    setLoading(btnId, true, 'Verifying…');
+
+    try {
+      const res = await fetch(`${API}/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ temp_code: _tempCode, otp: otpInput })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 403) {
+          return showError(errorId, 'Your account does not have access to WA Monitor. Contact your admin.');
+        }
+        return showError(errorId, data.error || 'Invalid code');
+      }
+
+      // Success
+      window.location.href = '/admin';
+
+    } catch (e) {
+      showError(errorId, 'Network error — please try again');
+    } finally {
+      setLoading(btnId, false, isTotp ? 'Verify' : 'Verify code');
+    }
+  }
+
+  // Auto-focus email on load
+  window.addEventListener('load', () => {
+    document.getElementById('email').focus();
+  });
+</script>
+</body>
+</html>

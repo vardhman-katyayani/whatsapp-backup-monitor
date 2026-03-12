@@ -6,6 +6,21 @@
   <title>WhatsApp Monitor - Admin Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/admin.css">
+  <script>
+    // Auth guard — redirect to login if not authenticated
+    (async function() {
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        if (!res.ok) { window.location.replace('/admin/login.html'); }
+        else {
+          const { user } = await res.json();
+          window.__currentUser = user;
+        }
+      } catch {
+        window.location.replace('/admin/login.html');
+      }
+    })();
+  </script>
 </head>
 <body>
   <div class="app">
@@ -57,6 +72,10 @@
         <div class="server-status">
           <span class="status-dot online"></span>
           <span>Server Online</span>
+        </div>
+        <div class="user-info" id="sidebar-user" style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.07);">
+          <div style="font-size:12px;color:var(--text-2);margin-bottom:6px;" id="user-email-label">Loading...</div>
+          <button onclick="doLogout()" style="background:rgba(248,81,73,0.12);border:1px solid rgba(248,81,73,0.25);color:#f85149;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;width:100%;">Sign out</button>
         </div>
       </div>
     </aside>
