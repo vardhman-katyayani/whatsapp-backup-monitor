@@ -1,0 +1,16 @@
+{
+  "localSettings": {
+    "security_notifications": true,
+    "input_enter_send": false,
+    "last_read_conversation_time": 1773062741924,
+    "lock_folder_hidden": false,
+    "does_user_have_passcode": false
+  },
+  "night_mode_settings": -1,
+  "backupSmbLocalSettings": {
+    "pref_key_messaging_handling_started_millis": 1747378134809
+  },
+  "includeVideosInBackup": true,
+  "backupFrequency": 1,
+  "backupNetworkSettings": 1
+}
